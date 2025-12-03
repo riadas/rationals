@@ -1,11 +1,8 @@
 abstract type Number # NEW: generalizes natural numbers and fractions
 abstract type Relation 
+Token = Char
 
-abstract type Token
-EntitySyntax = Token 
-RelationSyntax = Vector{Token}
-
-struct NaturalNumber <: Number # NEW: subtype of number
+struct NaturalNumber <: Number 
     value::Int
 end
 
@@ -19,11 +16,11 @@ struct Divide <: Relation
     arg2::Number
 end
 
-function format_relation(r::Relation)::RelationSyntax # NEW: consistent syntax
+function format_relation(r::Relation)::Vector{Token} # NEW: consistent syntax
     
 end
 
-function format_evaluated_relation(r::Relation)::EntitySyntax
+function format_evaluated_relation(r::Relation)::Token
     
 end
 

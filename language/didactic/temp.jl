@@ -1,9 +1,6 @@
 # CHANGES: missing abstract number type
 abstract type Relation 
-
-abstract type Token
-EntitySyntax = Token 
-RelationSyntax = Vector{Token}
+Token = Char
 
 struct Number # CHANGES: recogized as specifically natural number
     value::Int
@@ -19,11 +16,11 @@ struct Divide <: Relation
     arg2::Number
 end
 
-function format_relation(r::Relation)::Union{RelationSyntax, EntitySyntax} # CHANGES
+function format_relation(r::Relation)::Union{Vector{Token}, Token} # CHANGES
     
 end
 
-function format_evaluated_relation(r::Relation)::EntitySyntax
+function format_evaluated_relation(r::Relation)::Token
 
 end
 
