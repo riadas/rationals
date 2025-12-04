@@ -1,6 +1,6 @@
 abstract type Number end
 abstract type Relation end
-abstract type Object end
+abstract type SpatialObject end
 
 # concrete number types: NaturalNumber and RationalNumber
 struct NaturalNumber <: Number
@@ -10,16 +10,25 @@ end
 struct RationalNumber <: Number
     numerator::NaturalNumber
     denominator::NaturalNumber
-    # function RationalNumber(n, d)
-    #     n/d < 1/infinite_divisibility_number ? new(0, 1) : new(n, d)
-    # end
+    simplify::Bool
+    function RationalNumber(n::NaturalNumber, d::NaturalNumber, s::Bool)
+        !s ? new(n, d) : new(NaturalNumber(Int(n.value / gcd(n.value, d.value))), NaturalNumber(Int(d.value / gcd(n.value, d.value))))
+        # n/d < 1/infinite_divisibility_number ? new(0, 1) : new(n, d)
+    end
 end
+
+RationalNumber(n, d) = RationalNumber(n, d, true)
 
 Base.string(nn::NaturalNumber) = "$(nn.value)"
 Base.string(rn::RationalNumber) = "$(string(rn.numerator))/$(string(rn.denominator))" 
 
+Base.show(io::IO, nn::NaturalNumber) = print(Base.string(nn))
+Base.show(io::IO, rn::RationalNumber) = print(Base.string(rn))
+
 NN(v) = NaturalNumber(v)
+RN(n) = RN(n, 1)
 RN(n, d) = RationalNumber(n, d)
+cast_NN(rn::RationalNumber) = gcd(rn.numerator.value, rn.denominator.value) == rn.denominator.value ? NN(Int(rn.numerator.value / rn.denominator.value)) : rn
 
 # concrete relation types: Add, Subtract, Multiply, Divide, Compare
 struct Add <: Relation
@@ -46,12 +55,18 @@ struct Divide <: Relation
     operator::Symbol
 end
 
+struct Compare <: Relation 
+    arg1::Number 
+    arg2::Number 
+    operator::Symbol
+end
+
 Add(arg1, arg2) = Add(arg1, arg2, :+)
 Subtract(arg1, arg2) = Subtract(arg1, arg2, :-)
 Multiply(arg1, arg2) = Multiply(arg1, arg2, :*)
 Divide(arg1, arg2) = Divide(arg1, arg2, :÷)
 
-eval(r::Relation) = eval(Meta.parse(lowercase(string(typeof(r)))))(r.arg1, r.arg2)
+Base.eval(r::Relation) = eval(r.operator)(r.arg1, r.arg2)
 
 # number and relation syntax (format)
 
@@ -63,14 +78,14 @@ EntitySyntax = Token # 1, 2, 1.5, 1/2
 RelationSyntax = Vector{Token} # 1 + 2, 1 - 2, 1 × 2, 1 ÷ 2
 
 ## token constructor
-Tokenize(s::String) = occursin(" ", s) ? map(x -> Token(x) split(s, " ")) : Token(s)
+Tokenize(s::String) = occursin(" ", s) ? map(x -> Token(x), split(s, " ")) : Token(s)
 
 function format_problem(r::Relation)::RelationSyntax
     [format_problem_LHS(r)..., Token("="), format_problem_RHS(r)]
 end
 
 function format_problem_LHS(r::Relation)::RelationSyntax
-    Tokenize("(r.arg1) $(r.operator) $(r.arg2)")
+    Tokenize("(r.arg1) $(r.operator == :isequal ? "=" : r.operator) $(r.arg2)")
 end
 
 function format_problem_RHS(r::Relation)::EntitySyntax
@@ -94,6 +109,10 @@ function divide_whole(arg1::NaturalNumber, arg2::NaturalNumber)::NaturalNumber
     arg1.value % arg2.value == 0 ? NaturalNumber(Int(arg1.value / arg2.value)) : error("not divisible")
 end
 
+function compare(arg1::NaturalNumber, arg2::NaturalNumber, operator::Symbol)
+    eval(operator)(arg1.value, arg2.value)
+end
+
 # Typecasting Functions 
 
 ## NaturalNumber <-> Int
@@ -102,18 +121,34 @@ NaturalNumber(arg::NaturalNumber) = arg
 add(arg1::NaturalNumber, arg2::Int) = add(arg1, NaturalNumber(arg2))
 subtract(arg1::NaturalNumber, arg2::Int) = subtract(arg1, NaturalNumber(arg2))
 multiply(arg1::NaturalNumber, arg2::Int) = multiply(arg1, NaturalNumber(arg2))
-divide_whole(arg1::NaturalNumber, arg2::Int) = divide(arg1, NaturalNumber(arg2))
+divide(arg1::NaturalNumber, arg2::Int) = divide(arg1, NaturalNumber(arg2))
+compare(arg1::NaturalNumber, arg2::Int, operator::Symbol) = compare(arg1, NaturalNumber(arg2), operator)
 
 add(arg1::Int, arg2::NaturalNumber) = add(NaturalNumber(arg1), arg2)
 subtract(arg1::Int, arg2::NaturalNumber) = subtract(NaturalNumber(arg1), arg2)
 multiply(arg1::Int, arg2::NaturalNumber) = multiply(NaturalNumber(arg1), arg2)
-divide_whole(arg1::Int, arg2::NaturalNumber) = divide(NaturalNumber(arg1), arg2)
+divide(arg1::Int, arg2::NaturalNumber) = divide(NaturalNumber(arg1), arg2)
+compare(arg1::Int, arg2::NaturalNumber, operator::Symbol) = compare(NaturalNumber(arg1), arg2, operator)
 
-Base.:(+)(arg1::Union{NaturalNumber, Int}, arg2::Union{NaturalNumber, Int}) = arg1 isa Int && arg2 isa Int ? arg1 + arg2 : add(arg1, arg2)
-Base.:(-)(arg1::Union{NaturalNumber, Int}, arg2::Union{NaturalNumber, Int}) = arg1 isa Int && arg2 isa Int ? arg1 - arg2 : subtract(arg1, arg2)
-Base.:(*)(arg1::Union{NaturalNumber, Int}, arg2::Union{NaturalNumber, Int}) = arg1 isa Int && arg2 isa Int ? arg1 * arg2 : multiply(arg1, arg2)
-Base.:(/)(arg1::Union{NaturalNumber, Int}, arg2::Union{NaturalNumber, Int}) = arg1 isa Int && arg2 isa Int ? arg1 / arg2 : divide_whole(arg1, arg2)
-Base.:(÷)(arg1::Union{NaturalNumber, Int}, arg2::Union{NaturalNumber, Int}) = arg1 isa Int && arg2 isa Int ? arg1 ÷ arg2 : divide_whole(arg1, arg2)
+Base.:(+)(arg1::Union{NaturalNumber, Int}, arg2::NaturalNumber) = add(arg1, arg2)
+Base.:(-)(arg1::Union{NaturalNumber, Int}, arg2::NaturalNumber) = subtract(arg1, arg2)
+Base.:(*)(arg1::Union{NaturalNumber, Int}, arg2::NaturalNumber) = multiply(arg1, arg2)
+Base.:(/)(arg1::Union{NaturalNumber, Int}, arg2::NaturalNumber) = divide(arg1, arg2)
+Base.:(÷)(arg1::Union{NaturalNumber, Int}, arg2::NaturalNumber) = divide(arg1, arg2)
+
+Base.:(<)(arg1::Union{NaturalNumber, Int}, arg2::NaturalNumber) = compare(arg1, arg2, :<)
+Base.:isequal(arg1::Union{NaturalNumber, Int}, arg2::NaturalNumber) = divide(arg1, :isequal)
+Base.:(>)(arg1::Union{NaturalNumber, Int}, arg2::NaturalNumber) = compare(arg1, arg2, :>)
+
+Base.:(+)(arg1::NaturalNumber, arg2::Int) = add(arg1, arg2)
+Base.:(-)(arg1::NaturalNumber, arg2::Int) = subtract(arg1, arg2)
+Base.:(*)(arg1::NaturalNumber, arg2::Int) = multiply(arg1, arg2)
+Base.:(/)(arg1::NaturalNumber, arg2::Int) = divide(arg1, arg2)
+Base.:(÷)(arg1::NaturalNumber, arg2::Int) = divide(arg1, arg2)
+
+Base.:(<)(arg1::NaturalNumber, arg2::Int) = compare(arg1, arg2, :<)
+Base.:isequal(arg1::NaturalNumber, arg2::Int) = divide(arg1, :isequal)
+Base.:(>)(arg1::NaturalNumber, arg2::Int) = compare(arg1, arg2, :>)
 
 ## RationalNumber <-> NaturalNumber <-> Int
 RationalNumber(arg1::Int, arg2::Int) = RationalNumber(NaturalNumber(arg1), NaturalNumber(arg2))
@@ -128,11 +163,13 @@ add(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = add(arg1, RationalN
 subtract(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = subtract(arg1, RationalNumber(arg2))
 multiply(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = multiply(arg1, RationalNumber(arg2))
 divide(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = divide(arg1, RationalNumber(arg2))
+compare(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}, operator::Symbol) = compare(arg1, RationalNumber(arg2), operator)
 
 add(arg1::Union{NaturalNumber, Int}, arg2::RationalNumber) = add(RationalNumber(arg1), arg2)
 subtract(arg1::Union{NaturalNumber, Int}, arg2::RationalNumber) = subtract(RationalNumber(arg1), arg2)
 multiply(arg1::Union{NaturalNumber, Int}, arg2::RationalNumber) = multiply(RationalNumber(arg1), arg2)
 divide(arg1::Union{NaturalNumber, Int}, arg2::RationalNumber) = divide(RationalNumber(arg1), arg2)
+compare(arg1::Union{NaturalNumber, Int}, arg2::RationalNumber, operator::Symbol) = compare(RationalNumber(arg1), arg2, operator)
 
 Base.:(+)(arg1::Union{RationalNumber, NaturalNumber, Int}, arg2::RationalNumber) = add(RationalNumber(arg1), arg2)
 Base.:(-)(arg1::Union{RationalNumber, NaturalNumber, Int}, arg2::RationalNumber) = subtract(RationalNumber(arg1), arg2)
@@ -140,50 +177,58 @@ Base.:(*)(arg1::Union{RationalNumber, NaturalNumber, Int}, arg2::RationalNumber)
 Base.:(/)(arg1::Union{RationalNumber, NaturalNumber, Int}, arg2::RationalNumber) = divide(RationalNumber(arg1), arg2)
 Base.:(÷)(arg1::Union{RationalNumber, NaturalNumber, Int}, arg2::RationalNumber) = divide(RationalNumber(arg1), arg2)
 
-Base.:(+)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = add(arg2, RationalNumber(arg2))
-Base.:(-)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = subtract(arg2, RationalNumber(arg2))
-Base.:(*)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = multiply(arg2, RationalNumber(arg2))
-Base.:(/)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = divide(arg2, RationalNumber(arg2))
-Base.:(÷)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = divide(arg2, RationalNumber(arg2))
+Base.:(>)(arg1::Union{RationalNumber, NaturalNumber, Int}, arg2::RationalNumber) = compare(RationalNumber(arg1), arg2, :<)
+Base.:isequal(arg1::Union{RationalNumber, NaturalNumber, Int}, arg2::RationalNumber) = compare(RationalNumber(arg1), arg2, :isequal)
+Base.:(<)(arg1::Union{RationalNumber, NaturalNumber, Int}, arg2::RationalNumber) = compare(RationalNumber(arg1), arg2, :>)
+
+Base.:(+)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = add(arg1, RationalNumber(arg2))
+Base.:(-)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = subtract(arg1, RationalNumber(arg2))
+Base.:(*)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = multiply(arg1, RationalNumber(arg2))
+Base.:(/)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = divide(arg1, RationalNumber(arg2))
+Base.:(÷)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = divide(arg1, RationalNumber(arg2))
+
+Base.:(<)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = compare(arg1, RationalNumber(arg2), :<)
+Base.:isequal(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = compare(arg1, RationalNumber(arg2), :isequal)
+Base.:(>)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = compare(arg1, RationalNumber(arg2), :>)
 
 # physical realm functions
-struct PhysicalObject <: Object
+struct PhysicalObject <: SpatialObject
     volume::RationalNumber 
     weight::RationalNumber
 end
 
-struct AbstractUnit <: Object
-    length::RationalNumber=RN(1)
+struct AbstractUnit <: SpatialObject
+    length::RationalNumber
 end
 
 PhysicalObject(size::RationalNumber) = PhysicalObject(size, size)
 PhysicalObject(size::Union{Int, NaturalNumber}) = PhysicalObject(RationalNumber(size))
 
 # .size defaults to the space dimension for PhysicalObject: .volume
-Base.getproperty(obj::Object, sym::Symbol) = sym == :size ? obj.volume : Base.getfield(obj, sym)
+Base.getproperty(obj::SpatialObject, sym::Symbol) = sym == :size ? obj.volume : Base.getfield(obj, sym)
 
 # .size defaults to the space dimension for AbstractUnit: .length
 Base.getproperty(obj::AbstractUnit, sym::Symbol) = sym == :size ? obj.length : Base.getfield(obj, sym)
 
-Base.:(/)(obj::Object, nn::NaturalNumber) = PhysicalObject(divide(obj.volume, nn), divide(obj.weight, nn))
-Base.:(*)(obj::Object, nn::NaturalNumber) = PhysicalObject(multiply(obj.volume, nn), multiply(obj.weight, nn))
+Base.:(/)(obj::SpatialObject, nn::NaturalNumber) = PhysicalObject(divide(obj.volume, nn), divide(obj.weight, nn))
+Base.:(*)(obj::SpatialObject, nn::NaturalNumber) = PhysicalObject(multiply(obj.volume, nn), multiply(obj.weight, nn))
 
-Base.:(/)(obj::Object, nn::Int) = /(obj, NaturalNumber(nn))
-Base.:(*)(obj::Object, nn::Int) = *(obj, NaturalNumber(nn))
+Base.:(/)(obj::SpatialObject, nn::Int) = /(obj, NaturalNumber(nn))
+Base.:(*)(obj::SpatialObject, nn::Int) = *(obj, NaturalNumber(nn))
 
-function halve_obj(obj::Object)::Object
+function halve_obj(obj::SpatialObject)::SpatialObject
     obj / 2
 end
 
-function split_obj(obj::Object, n::NaturalNumber)::Object
+function split_obj(obj::SpatialObject, n::NaturalNumber)::SpatialObject
     obj / n
 end
 
-function combine_obj(obj::Object, n::NaturalNumber)::Object
+function combine_obj(obj::SpatialObject, n::NaturalNumber)::SpatialObject
     obj * n
 end
 
-function divide_obj(obj::Object, keep::NaturalNumber, split::NaturalNumber)::Object
+function divide_obj(obj::SpatialObject, keep::NaturalNumber, split::NaturalNumber)::SpatialObject
     combine_obj(split_obj(obj, split), keep)
 end
 
@@ -214,24 +259,42 @@ function multiply(rn::RationalNumber, n::NaturalNumber)
 end
 
 function divide(n::NaturalNumber, m::NaturalNumber)
-    multiply(divide(NaturalNumber(1), m), n) # combine_obj(split_obj(PhysicalObject(1), m), n).size
+    # multiply(divide(NaturalNumber(1), m), n) # combine_obj(split_obj(PhysicalObject(1), m), n).size
     # RationalNumber(n, m) 
-    # (divide_obj(PhysicalObject(1), n, m)).size
+    cast_NN((divide_obj(PhysicalObject(1), n, m)).size)
 end
 
 # arithmetic operations over Rational Numbers
+
+## sub-routines / helpers
+function common_multiple(arg1::NaturalNumber, arg2::NaturalNumber)
+    NaturalNumber(lcm(arg1.value, arg2.value)) # arg1 * arg2
+end
+
+function scale(rn::RationalNumber, nn::NaturalNumber)
+    RationalNumber(rn.numerator * nn, rn.denominator * nn, false)
+end
+
+## arithmetic
 function add(arg1::RationalNumber, arg2::RationalNumber)
     cm = common_multiple(arg1.denominator, arg2.denominator)
-    scaled_arg1 = scale(arg1, cm)
-    scaled_arg2 = scale(arg2, cm)
+    scaled_arg1 = scale(arg1, cm / arg1.denominator)
+    scaled_arg2 = scale(arg2, cm / arg2.denominator)
     RationalNumber(add(scaled_arg1.numerator, scaled_arg2.numerator), cm)
 end
 
 function subtract(arg1::RationalNumber, arg2::RationalNumber)
     cm = common_multiple(arg1.denominator, arg2.denominator)
-    scaled_arg1 = scale(arg1, cm)
-    scaled_arg2 = scale(arg2, cm)
+    scaled_arg1 = scale(arg1, cm / arg1.denominator)
+    scaled_arg2 = scale(arg2, cm / arg2.denominator)
     RationalNumber(subtract(scaled_arg1.numerator, scaled_arg2.numerator), cm)
+end
+
+function compare(arg1::RationalNumber, arg2::RationalNumber, operator::Symbol)
+    cm = common_multiple(arg1.denominator, arg2.denominator)
+    scaled_arg1 = scale(arg1, cm / arg1.denominator)
+    scaled_arg2 = scale(arg2, cm / arg2.denominator)
+    compare(arg1.numerator, arg2.numerator, operator) # eval(operator)(arg1.numerator.value / arg1.denominator.value, arg2.numerator.value / arg2.denominator.value)
 end
 
 function multiply(arg1::RationalNumber, arg2::RationalNumber)
@@ -240,14 +303,6 @@ end
 
 function divide(arg1::RationalNumber, arg2::RationalNumber)
     divide(multiply(arg1, arg2.denominator), arg2.numerator)
-end
-
-function common_multiple(arg1::NaturalNumber, arg2::NaturalNumber)
-    arg1 * arg2
-end
-
-function scale(rn::RationalNumber, nn::NaturalNumber)
-    RationalNumber(rn.numerator * nn, rn.denominator * nn)
 end
 
 # WEIGHT/DENSITY
@@ -262,6 +317,6 @@ end
 @enum Coarseness coarse=4 fine=1000 infinite=typemax(Int32) 
 Base.:(/)(x, y::Coarseness) = x/Int(y)
 
-infinite_divisibility_space = fine
-infinite_divisibility_number = coarse
-infinite_divisibility_weight = coarse
+infinite_divisibility_space = fine # start: fine
+infinite_divisibility_number = infinite # start: coarse
+infinite_divisibility_weight = infinite # start: coarse
