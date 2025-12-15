@@ -34,6 +34,8 @@ cast_NN(rn::RationalNumber) = gcd(rn.numerator.value, rn.denominator.value) == r
 cast_int(nn::NaturalNumber) = nn.value 
 cast_float(rn::RationalNumber) = cast_int(rn.numerator) / cast_int(rn.denominator) 
 
+NullNumber = NN(-1)
+
 # concrete relation types: Add, Subtract, Multiply, Divide, Compare
 struct Add <: Relation
     arg1::Number
@@ -196,17 +198,23 @@ Base.:isequal(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = compare(a
 Base.:(>)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = compare(arg1, RationalNumber(arg2), :>)
 
 # physical realm functions
+struct Hidden
+    value
+end
+
 struct PhysicalObject <: SpatialObject
-    volume::RationalNumber 
-    weight::RationalNumber
+    volume::Union{RationalNumber, Hidden} 
+    weight::Union{RationalNumber, Hidden}
 end
 
 struct AbstractUnit <: SpatialObject
     length::RationalNumber
 end
 
-PhysicalObject(size::RationalNumber) = PhysicalObject(size, size)
+PhysicalObject(size::Union{RationalNumber, Hidden}) = PhysicalObject(size, size)
 PhysicalObject(size::Union{Int, NaturalNumber}) = PhysicalObject(RationalNumber(size))
+
+NullObject = PhysicalObject(0)
 
 # .size defaults to the space dimension for PhysicalObject: .volume
 Base.getproperty(obj::SpatialObject, sym::Symbol) = sym == :size ? obj.volume : Base.getfield(obj, sym)
@@ -226,6 +234,10 @@ end
 
 function split_obj(obj::SpatialObject, n::NaturalNumber)::SpatialObject
     obj / n
+end
+
+function double_obj(obj::SpatialObject)::SpatialObject
+    obj * 2
 end
 
 function combine_obj(obj::SpatialObject, n::NaturalNumber)::SpatialObject
@@ -250,6 +262,10 @@ function halve(rn::RationalNumber)
     RationalNumber(rn.numerator, rn.denominator * 2) # halve_obj(PhysicalObject(rn)).size
 end
 
+function double(rn::RationalNumber)
+    RationalNumber(rn.numerator*2, rn.denominator)
+end
+
 function divide(n::NaturalNumber)
     RationalNumber(1, n)
 end
@@ -267,6 +283,7 @@ function divide(n::NaturalNumber, m::NaturalNumber)
     # RationalNumber(n, m) 
     cast_NN((divide_obj(PhysicalObject(1), n, m)).size)
 end
+
 
 # arithmetic operations over Rational Numbers
 
@@ -311,16 +328,20 @@ end
 
 # WEIGHT/DENSITY
 function weight(obj::PhysicalObject)
-    obj.weight
+    undifferentiated_weight_density(obj)
 end
 
 function density(obj::PhysicalObject)
-    obj.weight / obj.volume
+    undifferentiated_weight_density(obj)
+end
+
+function undifferentiated_weight_density(obj::PhysicalObject)
+    sample([cast_float(obj.weight), cast_float(obj.weight) / cast_float(obj.volume)])
 end
 
 @enum Coarseness coarse=4 fine=1000 infinite=typemax(Int32) 
 Base.:(/)(x, y::Coarseness) = x/Int(y)
 
 infinite_divisibility_space = infinite # start: fine
-infinite_divisibility_number = infinite # start: coarse
-infinite_divisibility_weight = infinite # start: coarse
+infinite_divisibility_number = fine # start: coarse
+infinite_divisibility_weight = fine # start: coarse

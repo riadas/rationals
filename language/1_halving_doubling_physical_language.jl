@@ -2,7 +2,7 @@ abstract type Number end
 abstract type Relation end
 abstract type SpatialObject end
 
-relate = true
+relate = false
 
 # concrete number types: NaturalNumber and RationalNumber
 struct NaturalNumber <: Number
@@ -33,6 +33,8 @@ RN(n, d) = RationalNumber(n, d)
 cast_NN(rn::RationalNumber) = gcd(rn.numerator.value, rn.denominator.value) == rn.denominator.value ? NN(Int(rn.numerator.value / rn.denominator.value)) : rn
 cast_int(nn::NaturalNumber) = nn.value 
 cast_float(rn::RationalNumber) = cast_int(rn.numerator) / cast_int(rn.denominator) 
+
+NullNumber = NN(-1)
 
 # concrete relation types: Add, Subtract, Multiply, Divide, Compare
 struct Add <: Relation
@@ -196,17 +198,23 @@ Base.:isequal(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = compare(a
 Base.:(>)(arg1::RationalNumber, arg2::Union{NaturalNumber, Int}) = compare(arg1, RationalNumber(arg2), :>)
 
 # physical realm functions
+struct Hidden
+    value
+end
+
 struct PhysicalObject <: SpatialObject
-    volume::RationalNumber 
-    weight::RationalNumber
+    volume::Union{RationalNumber, Hidden} 
+    weight::Union{RationalNumber, Hidden}
 end
 
 struct AbstractUnit <: SpatialObject
     length::RationalNumber
 end
 
-PhysicalObject(size::RationalNumber) = PhysicalObject(size, size)
+PhysicalObject(size::Union{RationalNumber, Hidden}) = PhysicalObject(size, size)
 PhysicalObject(size::Union{Int, NaturalNumber}) = PhysicalObject(RationalNumber(size))
+
+NullObject = PhysicalObject(0)
 
 # .size defaults to the space dimension for PhysicalObject: .volume
 Base.getproperty(obj::SpatialObject, sym::Symbol) = sym == :size ? obj.volume : Base.getfield(obj, sym)
@@ -214,8 +222,8 @@ Base.getproperty(obj::SpatialObject, sym::Symbol) = sym == :size ? obj.volume : 
 # .size defaults to the space dimension for AbstractUnit: .length
 Base.getproperty(obj::AbstractUnit, sym::Symbol) = sym == :size ? obj.length : Base.getfield(obj, sym)
 
-Base.:(/)(obj::SpatialObject, nn::NaturalNumber) = PhysicalObject(divide(obj.volume, nn), divide(obj.weight, nn))
-Base.:(*)(obj::SpatialObject, nn::NaturalNumber) = PhysicalObject(multiply(obj.volume, nn), multiply(obj.weight, nn))
+Base.:(/)(obj::SpatialObject, nn::NaturalNumber) = PhysicalObject(Hidden((obj.size.numerator.value / obj.size.denominator.value ) / nn.value)) # INCOMPLETE: PhysicalObject(divide(obj.volume, nn), divide(obj.weight, nn))
+Base.:(*)(obj::SpatialObject, nn::NaturalNumber) = PhysicalObject(Hidden((obj.size.numerator.value / obj.size.denominator.value) * nn.value))  # INCOMPLETE: PhysicalObject(multiply(obj.volume, nn), multiply(obj.weight, nn))
 
 Base.:(/)(obj::SpatialObject, nn::Int) = /(obj, NaturalNumber(nn))
 Base.:(*)(obj::SpatialObject, nn::Int) = *(obj, NaturalNumber(nn))
@@ -228,99 +236,114 @@ function split_obj(obj::SpatialObject, n::NaturalNumber)::SpatialObject
     obj / n
 end
 
+function double_obj(obj::SpatialObject)::SpatialObject
+    obj * 2
+end
+
 function combine_obj(obj::SpatialObject, n::NaturalNumber)::SpatialObject
     obj * n
 end
 
 function divide_obj(obj::SpatialObject, keep::NaturalNumber, split::NaturalNumber)::SpatialObject
-    combine_obj(split_obj(obj, split), keep)
+    NullObject # INCOMPLETE: combine_obj(split_obj(obj, split), keep)
 end
 
 # abstract number realm functions
 
 function halve()
-    RationalNumber(1, 2)
+    NullNumber # INCOMPLETE: RationalNumber(1, 2)
 end
 
 function halve(n::NaturalNumber)
-    RationalNumber(n, 2)
+    NullNumber # INCOMPLETE: RationalNumber(n, 2)
 end
 
 function halve(rn::RationalNumber)
-    RationalNumber(rn.numerator, rn.denominator * 2) # halve_obj(PhysicalObject(rn)).size
+    NullNumber # INCOMPLETE: RationalNumber(rn.numerator, rn.denominator * 2) # halve_obj(PhysicalObject(rn)).size
+end
+
+function double(rn::RationalNumber)
+     NullNumber # INCOMPLETE: RationalNumber(rn.numerator*2, rn.denominator)
 end
 
 function divide(n::NaturalNumber)
-    RationalNumber(1, n)
+    NullNumber # INCOMPLETE: RationalNumber(1, n)
 end
 
 function divide(rn::RationalNumber, n::NaturalNumber)
-    RationalNumber(rn.numerator, rn.denominator * n) # split_obj(PhysicalObject(rn), n).size
+    NullNumber # INCOMPLETE: RationalNumber(rn.numerator, rn.denominator * n) # split_obj(PhysicalObject(rn), n).size
 end
 
 function multiply(rn::RationalNumber, n::NaturalNumber)
-    RationalNumber(rn.numerator*n, rn.denominator) # combine_obj(PhysicalObject(rn), n).size
+    NullNumber # INCOMPLETE: RationalNumber(rn.numerator*n, rn.denominator) # combine_obj(PhysicalObject(rn), n).size
 end
 
 function divide(n::NaturalNumber, m::NaturalNumber)
     # multiply(divide(NaturalNumber(1), m), n) # combine_obj(split_obj(PhysicalObject(1), m), n).size
     # RationalNumber(n, m) 
-    cast_NN((divide_obj(PhysicalObject(1), n, m)).size)
+    NullNumber # INCOMPLETE: cast_NN((divide_obj(PhysicalObject(1), n, m)).size)
 end
 
 # arithmetic operations over Rational Numbers
 
 ## sub-routines / helpers
 function common_multiple(arg1::NaturalNumber, arg2::NaturalNumber)
-    NaturalNumber(lcm(arg1.value, arg2.value)) # arg1 * arg2
+    NullNumber # INCOMPLETE: NaturalNumber(lcm(arg1.value, arg2.value)) # arg1 * arg2
 end
 
 function scale(rn::RationalNumber, nn::NaturalNumber)
-    RationalNumber(rn.numerator * nn, rn.denominator * nn, false)
+    NullNumber # INCOMPLETE: RationalNumber(rn.numerator * nn, rn.denominator * nn, false)
 end
 
 ## arithmetic
 function add(arg1::RationalNumber, arg2::RationalNumber)
-    cm = common_multiple(arg1.denominator, arg2.denominator)
-    scaled_arg1 = scale(arg1, cm / arg1.denominator)
-    scaled_arg2 = scale(arg2, cm / arg2.denominator)
-    RationalNumber(add(scaled_arg1.numerator, scaled_arg2.numerator), cm)
+    NullNumber # INCOMPLETE
+    # cm = common_multiple(arg1.denominator, arg2.denominator)
+    # scaled_arg1 = scale(arg1, cm / arg1.denominator)
+    # scaled_arg2 = scale(arg2, cm / arg2.denominator)
+    # RationalNumber(add(scaled_arg1.numerator, scaled_arg2.numerator), cm)
 end
 
 function subtract(arg1::RationalNumber, arg2::RationalNumber)
-    cm = common_multiple(arg1.denominator, arg2.denominator)
-    scaled_arg1 = scale(arg1, cm / arg1.denominator)
-    scaled_arg2 = scale(arg2, cm / arg2.denominator)
-    RationalNumber(subtract(scaled_arg1.numerator, scaled_arg2.numerator), cm)
+    NullNumber # INCOMPLETE
+    # cm = common_multiple(arg1.denominator, arg2.denominator)
+    # scaled_arg1 = scale(arg1, cm / arg1.denominator)
+    # scaled_arg2 = scale(arg2, cm / arg2.denominator)
+    # RationalNumber(subtract(scaled_arg1.numerator, scaled_arg2.numerator), cm)
 end
 
 function compare(arg1::RationalNumber, arg2::RationalNumber, operator::Symbol)
-    cm = common_multiple(arg1.denominator, arg2.denominator)
-    scaled_arg1 = scale(arg1, cm / arg1.denominator)
-    scaled_arg2 = scale(arg2, cm / arg2.denominator)
-    compare(arg1.numerator, arg2.numerator, operator) # eval(operator)(arg1.numerator.value / arg1.denominator.value, arg2.numerator.value / arg2.denominator.value)
+    NullNumber # INCOMPLETE
+    # cm = common_multiple(arg1.denominator, arg2.denominator)
+    # scaled_arg1 = scale(arg1, cm / arg1.denominator)
+    # scaled_arg2 = scale(arg2, cm / arg2.denominator)
+    # compare(arg1.numerator, arg2.numerator, operator) # eval(operator)(arg1.numerator.value / arg1.denominator.value, arg2.numerator.value / arg2.denominator.value)
 end
 
 function multiply(arg1::RationalNumber, arg2::RationalNumber)
-    divide(multiply(arg1, arg2.numerator), arg2.denominator)
+    NullNumber # INCOMPLETE: divide(multiply(arg1, arg2.numerator), arg2.denominator)
 end
 
 function divide(arg1::RationalNumber, arg2::RationalNumber)
-    divide(multiply(arg1, arg2.denominator), arg2.numerator)
+    NullNumber # INCOMPLETE: divide(multiply(arg1, arg2.denominator), arg2.numerator)
 end
 
 # WEIGHT/DENSITY
 function weight(obj::PhysicalObject)
-    obj.weight
+    undifferentiated_weight_density(obj)
 end
 
 function density(obj::PhysicalObject)
-    obj.weight / obj.volume
+    undifferentiated_weight_density(obj)
+end
+
+function undifferentiated_weight_density(obj::PhysicalObject)
+    sample([cast_float(obj.weight), cast_float(obj.weight) / cast_float(obj.volume)])
 end
 
 @enum Coarseness coarse=4 fine=1000 infinite=typemax(Int32) 
 Base.:(/)(x, y::Coarseness) = x/Int(y)
 
-infinite_divisibility_space = infinite # start: fine
-infinite_divisibility_number = infinite # start: coarse
-infinite_divisibility_weight = infinite # start: coarse
+infinite_divisibility_space = fine # start: fine
+infinite_divisibility_number = coarse # start: coarse
+infinite_divisibility_weight = coarse # start: coarse
