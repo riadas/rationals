@@ -114,6 +114,12 @@ language6_spec["infinite_divisibility_space"] = true
 language7_definition_spec = deepcopy(base_language_definition_spec)
 language7_spec = deepcopy(base_language_spec)
 
+# LANGUAGE 8 
+language8_definition_spec = deepcopy(language5_definition_spec)
+language8_spec = deepcopy(language5_spec)
+language8_definition_spec["relate"] = ""
+language8_spec["relate"] = false
+
 language_name_to_definition_spec = Dict([
     "1_halving_doubling_physical_language.jl" => language1_definition_spec, 
     "2_halving_doubling_notation_language.jl" => language2_definition_spec, 
@@ -124,12 +130,6 @@ language_name_to_definition_spec = Dict([
     "7_abstract_infinite_divisibility_language.jl"  => language7_definition_spec,
     "8_rational_arithmetic_ungrounded_language.jl"  => language8_definition_spec,
 ])
-
-# LANGUAGE 8 
-language8_definition_spec = deepcopy(language5_definition_spec)
-language8_spec = deepcopy(language5_spec)
-language8_definition_spec["relate"] = ""
-language8_spec["relate"] = false
 
 language_name_to_spec = Dict([
     "1_halving_doubling_physical_language.jl" => language1_spec, 
@@ -283,6 +283,8 @@ function distance_between_specs(spec1, spec2, relate_factor)
         # dist += 10
         if !spec1["relate"]
             dist += 10
+        else
+            dist = dist / 10
         end
     end
 
@@ -294,6 +296,8 @@ function distance_between_specs(spec1, spec2, relate_factor)
 
         if !spec1["infinite_divisibility_space"]
             dist += 10
+        else
+            dist = dist / 10
         end
     end
 
