@@ -290,7 +290,7 @@ task_dict = Dict([
     "split_task" => (split_task, 5),
     "combine_task" => (combine_task, 5),
     "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 0), # MODIFY # 30 vs. 0
+    "is_a_number_task" => (is_a_number_task, 15), # MODIFY # 30 vs. 0
     "arithmetic_task" => (arithmetic_task, 5), # MODIFY
     "subtraction_task" => (subtraction_task, 5),
     "compare_task" => (compare_task, 5), 
@@ -581,7 +581,7 @@ function compute_next_distribution(curr_distribution, t, spec2_taught=0.0)
     next_distribution
 end
 
-num_time_steps = 1000
+num_time_steps = 3000
 transition_prob_identity_base = 0.99
 transition_prob_identity_rate = 0.0003
 transition_prob_base = 2 # 100.0 2

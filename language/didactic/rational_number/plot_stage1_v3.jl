@@ -291,13 +291,13 @@ task_dict = Dict([
     "split_task" => (split_task, 5),
     "combine_task" => (combine_task, 5),
     "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 0), # 15 vs. 0 MODIFY
-    "arithmetic_task" => (arithmetic_task, 5), # MODIFY
-    "subtraction_task" => (subtraction_task, 5),
-    "compare_task" => (compare_task, 5),
+    "is_a_number_task" => (is_a_number_task, 15), # 15 vs. 0 MODIFY
+    "arithmetic_task" => (arithmetic_task, 10), # MODIFY
+    "subtraction_task" => (subtraction_task, 10),
+    "compare_task" => (compare_task, 10),
     "get_to_zero_space_task" => (get_to_zero_space_task, 5),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
-    "get_to_zero_weight_task" => (get_to_zero_weight_task, 0),
+    "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
 ])
 relate_task_proportion = task_dict["is_a_number_task"][2] / sum(map(k -> task_dict[k][2], [keys(task_dict)...]))
 
@@ -350,8 +350,8 @@ for language in language_names_pretty
 end
 # memory_costs[7] = 10 * memory_costs[7]
 memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
-memory_costs[7] = 1.25 * memory_costs[7]
-memory_costs[6] = 1.25 * memory_costs[6]
+# memory_costs[7] = 1.25 * memory_costs[7]
+# memory_costs[6] = 1.25 * memory_costs[6]
 # memory_costs[5] = 0.5 * memory_costs[5]
 
 computational_costs = map(x -> 0.5, 1:length(language_names))
@@ -408,7 +408,7 @@ plot(line_plot, max_utility_plot, layout=(2, 1), size=(600, 550))
 
 
 # BACKGROUND PROPOSER
-function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=0.0)
+function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
     dist = 0
     for k in keys(spec1)
         if spec1[k] != spec2[k]
@@ -476,9 +476,9 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                 end
                 possible_combos = filter(x -> x != [], [combinations(forgetting_possibility_indices)...])
                 overall_forgetting_prob = 0.0
-                individual_function_forgetting_prob = pre_relate_mistake_prob_min + (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min)
+                individual_function_forgetting_prob = 0.0 * pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min)
                 for combo in possible_combos 
-                    forgetting_prob = individual_function_forgetting_prob^(length(combo))
+                    forgetting_prob = individual_function_forgetting_prob * 1/length(possible_combos)
                     if rederive_bool 
                         no_rederiv_factor = (0.05)^(length(function_names) - length(combo))
                     else
@@ -495,6 +495,22 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                     
                     new_distribution[new_lang_name_idx] += distribution[i] * final_forgetting_prob
                 end
+                # @show overall_forgetting_prob 
+                arr = filter(x -> x > 1, new_distribution)
+                if arr != []
+                    println("OOPS")
+                    println(arr)
+                    println(sum(new_distribution))
+                        println(findall(x -> x > 1, new_distribution))
+                end
+
+                arr = filter(x -> x < 0, new_distribution)
+                if arr != []
+                    println("OOPS 2 BELOW ZERO")
+                    println(arr)
+                    println(findall(x -> x < 0, new_distribution))
+                end
+
                 new_distribution[i] = distribution[i] * (1 - overall_forgetting_prob)
             end
         end
@@ -507,8 +523,30 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, true)
     
     # VERSION 2: redistribute weight with proposal
-    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # false
-    new_distribution = compute_next_distribution(new_distribution, t, 1.0)
+    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # false
+
+    # forgetting step
+    new_distribution = compute_next_distribution(distribution, t, 0.0, true)
+    
+    # rederivation step 
+    new_distribution = compute_next_distribution(new_distribution, t, 0.0, false)
+    # new_distribution
+
+    # arr = filter(x -> x > 1, new_distribution)
+    # if arr != []
+    #     println("2 OOPS")
+    #     println(arr)
+    #     println(sum(new_distribution))
+    #         println(findall(x -> x > 1, new_distribution))
+    # end
+
+    # arr = filter(x -> x < 0, new_distribution)
+    # if arr != []
+    #     println("2 OOPS 2 BELOW ZERO")
+    #     println(arr)
+    #     println(findall(x -> x < 0, new_distribution))
+    # end
+    
     new_distribution
 
     # VERSON 0: null
@@ -533,7 +571,7 @@ function find_lang_name_with_spec(spec)
     error("find_lang_name_with_spec: no lang_name with this spec found")
 end
 
-function plot_heatmap(relate_factor, title="", spec2_taught=0.0)
+function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=false)
     transition_prob_identity = transition_prob_identity_base
     heatmap_values = []
     for i in 1:length(language_names)
@@ -543,14 +581,20 @@ function plot_heatmap(relate_factor, title="", spec2_taught=0.0)
             l2 = language_names_pretty[j]
             l1_spec = language_name_to_spec[l1]
             l2_spec = language_name_to_spec[l2]
-            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, j < 9 ? (1.0 - spec2_taught) : 0.0)
+            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, j < 9 ? spec2_taught : 0.0)
             if dist == 0
                 transition_prob = transition_prob_identity
             else
                 if s == -1 
                     transition_prob = (1 - transition_prob_identity) * transition_prob_base^(-dist)
                 else
-                    transition_prob = 0
+                    if !backwards_bool
+                        transition_prob = 0                        
+                    else
+                        transition_prob = 2 * (1 - transition_prob_identity) * transition_prob_base^(-dist)
+                        # w = 0.1
+                        # transition_prob = ((1 - w) * transition_prob_identity + w * 1.0) - transition_prob_identity # 0.001
+                    end
                 end
             end
             push!(heatmap_values[end], transition_prob)
@@ -562,13 +606,13 @@ function plot_heatmap(relate_factor, title="", spec2_taught=0.0)
     heatmap_values, heatmap(language_names, language_names, heatmap_values_matrix, aspect_ratio=:equal, clims=(0.0, 1.0), title=title, xrotation=270, tickfontsize=5, titlefontsize=11)
 end
 
-function compute_next_distribution(curr_distribution, t, spec2_taught=0.0)
+function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false)
     utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
     
     relate_factor = t * relate_task_proportion * 1000
     relate_factor = relate_factor > 1 ? 1 : relate_factor
     push!(relate_factors, relate_factor)
-    transition_probabilities, _ = plot_heatmap(relate_factor, "", spec2_taught)
+    transition_probabilities, _ = plot_heatmap(relate_factor, "", spec2_taught, backwards_bool)
     next_distribution = map(x -> 0.0, 1:length(language_names))
     for i in 1:length(language_names)
         total = 0.0
@@ -603,11 +647,13 @@ all_distributions = []
 push!(all_distributions, curr_distribution)
 relate_factors = []
 for t in 0:time_step_unit:num_time_steps*time_step_unit
-    next_distribution = compute_next_distribution(curr_distribution, t)
+    next_distribution = compute_next_distribution(curr_distribution, t, 1.0)
 
     # forgetting/rederivation-based modification of new distribution
     next_distribution = update_dist_based_on_forgetting_and_resynthesis(next_distribution, t)
-
+    # println(length(next_distribution))
+    # println(maximum(next_distribution))
+    # @show next_distribution
     index = findall(v -> v == maximum(next_distribution), next_distribution)[1]
     push!(max_lot_indexes, index)
     push!(max_lots, join(split(language_names_pretty[index], "_")[2:end], " "))
@@ -620,7 +666,7 @@ for t in 0:time_step_unit:num_time_steps*time_step_unit
     #     println("hello 1")
     # end
     push!(all_distributions, curr_distribution)
-    println(max_lots[end])
+    println("$(length(max_lots)): $(max_lots[end])")
 
 end
 
