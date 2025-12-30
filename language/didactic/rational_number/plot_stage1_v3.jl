@@ -294,9 +294,9 @@ task_dict = Dict([
     "is_a_number_task" => (is_a_number_task, 30), # MODIFY
     "arithmetic_task" => (arithmetic_task, 5), # MODIFY
     "subtraction_task" => (subtraction_task, 5),
-    "compare_task" => (compare_task, 5), 
+    "compare_task" => (compare_task, 5),
     "get_to_zero_space_task" => (get_to_zero_space_task, 5),
-    "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 0),
+    "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 0),
 ])
 relate_task_proportion = task_dict["is_a_number_task"][2] / sum(map(k -> task_dict[k][2], [keys(task_dict)...]))
@@ -350,7 +350,7 @@ for language in language_names_pretty
 end
 # memory_costs[7] = 10 * memory_costs[7]
 memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
-# memory_costs[7] = 2 * memory_costs[7]
+memory_costs[7] = 1.1 * memory_costs[7]
 # memory_costs[6] = 1.5 * memory_costs[6]
 # memory_costs[5] = 0.5 * memory_costs[5]
 
@@ -401,7 +401,7 @@ end
 
 # line_plot
 
-max_utility_plot = bar(ones(length(maxs)), color = map(i -> collect(palette(:tab10))[i], max_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+max_utility_plot = bar(ones(length(maxs)), color = map(i -> vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], max_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
 
 plot(line_plot, max_utility_plot, layout=(2, 1), size=(600, 550))
 # line_plot
@@ -588,7 +588,7 @@ transition_prob_identity_base = 0.99
 transition_prob_identity_rate = 0.0003
 transition_prob_base = 2 # 100.0 2
 utility_base = 10.0 # 10000.0
-instruction_bias_base = 100.0
+instruction_bias_base = 1000.0
 
 pre_relate_mistake_prob_max = 0.3
 pre_relate_mistake_prob_min = 0.2
@@ -624,7 +624,7 @@ for t in 0:time_step_unit:num_time_steps*time_step_unit
 
 end
 
-max_lot_plot = bar(ones(length(max_lots)), color = map(i -> collect(palette(:tab10))[i], max_lot_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+max_lot_plot = bar(ones(length(max_lots)), color = map(i -> vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], max_lot_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
 
 
 dist_plot = nothing
