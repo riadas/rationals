@@ -300,9 +300,9 @@ task_dict = Dict([
 ])
 relate_task_proportion = task_dict["is_a_number_task"][2] / sum(map(k -> task_dict[k][2], [keys(task_dict)...]))
 
-# function compute_task_accuracy_base(lang_name, task_dict)
-#     compute_score(lang_name, task_dict, "../..")
-# end
+function compute_task_accuracy_base(lang_name, task_dict)
+    compute_score(lang_name, task_dict, "../..")
+end
 
 # base_accuracies = Dict()
 # for language_name in language_names_pretty 
@@ -588,11 +588,6 @@ transition_prob_base = 2 # 100.0 2
 utility_base = 10.0 # 10000.0
 instruction_bias_base = 100.0
 
-pre_relate_mistake_prob_max = 0.3
-pre_relate_mistake_prob_min = 0.2
-post_relate_mistake_prob_max = 0.05
-post_relate_mistake_prob_min = 0.01
-
 max_lot_indexes = [1]
 max_lots = [language_names_pretty[1]]
 curr_distribution = map(x -> 0.0, 1:length(language_names))
@@ -643,3 +638,53 @@ max_lot_plot
 # dist_plot
 
 plot(dist_plot, max_lot_plot, layout=(2, 1))
+
+pre_relate_mistake_prob_max = 0.4
+pre_relate_mistake_prob_min = 0.3
+post_relate_mistake_prob_max = 0.05
+post_relate_mistake_prob_min = 0.01
+
+
+accuracy_over_time_values = []
+for t in 1:length(max_lot_indexes)
+    idx = max_lot_indexes[t]
+    lang_name = language_names_pretty[idx]
+    relate_defined = language_name_to_spec[lang_name]["relate"] == "RN"
+    base_accuracy = accuracies[idx]
+    mistake_prob = 0.0
+    if relate_defined 
+        mistake_prob = post_relate_mistake_prob_max - (t / num_time_steps) * (post_relate_mistake_prob_max - post_relate_mistake_prob_min)
+    else
+        mistake_prob = pre_relate_mistake_prob_max - (t / num_time_steps) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min)
+    end
+    final_accuracy = base_accuracy * (1 - mistake_prob)
+    push!(accuracy_over_time_values, final_accuracy)
+end
+
+accuracy_over_time_plot = plot(collect(0:length(max_lot_indexes) - 1), accuracy_over_time_values, xlims=(0,length(max_lot_indexes) - 1), ylims=(0.0, 1.0), title="MAP LoT Accuracy over Time", xlabel="Time", ylabel="Accuracy")
+
+
+global average_accuracy_over_time_values = map(x -> 0.0, 1:length(dist_xs))
+for i in 1:length(language_names)
+    println(i)
+    lang_name = language_names_pretty[i]
+    language_proportions = map(t -> all_distributions[t][i], 1:length(dist_xs))
+    
+    relate_defined = language_name_to_spec[lang_name]["relate"] == "RN"
+    base_accuracy = accuracies[i]
+    accuracies_over_time = []
+    for t in 1:length(dist_xs)
+        mistake_prob = 0.0
+        if relate_defined 
+            mistake_prob = post_relate_mistake_prob_max - (t / length(dist_xs)) * (post_relate_mistake_prob_max - post_relate_mistake_prob_min)
+        else
+            mistake_prob = pre_relate_mistake_prob_max - (t / length(dist_xs)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min)
+        end
+        final_accuracy = base_accuracy * (1 - mistake_prob)
+        push!(accuracies_over_time, final_accuracy)
+    end
+    accuracy_proportions = language_proportions .* accuracies_over_time
+    global average_accuracy_over_time_values = average_accuracy_over_time_values .+ accuracy_proportions
+end
+
+average_accuracy_over_time_plot = plot(collect(0:length(dist_xs) - 1), average_accuracy_over_time_values, xlims=(0,length(dist_xs) - 1), ylims=(0.0, 1.0), title="Average LoT Accuracy over Time", xlabel="Time", ylabel="Accuracy")

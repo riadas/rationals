@@ -291,7 +291,7 @@ task_dict = Dict([
     "split_task" => (split_task, 5),
     "combine_task" => (combine_task, 5),
     "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 30), # MODIFY
+    "is_a_number_task" => (is_a_number_task, 0), # 15 vs. 0 MODIFY
     "arithmetic_task" => (arithmetic_task, 5), # MODIFY
     "subtraction_task" => (subtraction_task, 5),
     "compare_task" => (compare_task, 5),
@@ -350,8 +350,8 @@ for language in language_names_pretty
 end
 # memory_costs[7] = 10 * memory_costs[7]
 memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
-memory_costs[7] = 1.1 * memory_costs[7]
-# memory_costs[6] = 1.5 * memory_costs[6]
+memory_costs[7] = 1.25 * memory_costs[7]
+memory_costs[6] = 1.25 * memory_costs[6]
 # memory_costs[5] = 0.5 * memory_costs[5]
 
 computational_costs = map(x -> 0.5, 1:length(language_names))
@@ -476,7 +476,7 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                 end
                 possible_combos = filter(x -> x != [], [combinations(forgetting_possibility_indices)...])
                 overall_forgetting_prob = 0.0
-                individual_function_forgetting_prob = pre_relate_mistake_prob_min + (t / (num_time_steps * time_step_unit)) * (post_relate_mistake_prob_max - pre_relate_mistake_prob_min)
+                individual_function_forgetting_prob = pre_relate_mistake_prob_min + (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min)
                 for combo in possible_combos 
                     forgetting_prob = individual_function_forgetting_prob^(length(combo))
                     if rederive_bool 
@@ -507,8 +507,8 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, true)
     
     # VERSION 2: redistribute weight with proposal
-    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false)
-    new_distribution = compute_next_distribution(new_distribution, t, 0.0)
+    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # false
+    new_distribution = compute_next_distribution(new_distribution, t, 1.0)
     new_distribution
 
     # VERSON 0: null
@@ -583,15 +583,15 @@ function compute_next_distribution(curr_distribution, t, spec2_taught=0.0)
     next_distribution
 end
 
-num_time_steps = 750
+num_time_steps = 1000
 transition_prob_identity_base = 0.99
 transition_prob_identity_rate = 0.0003
 transition_prob_base = 2 # 100.0 2
 utility_base = 10.0 # 10000.0
-instruction_bias_base = 1000.0
+instruction_bias_base = 100.0
 
-pre_relate_mistake_prob_max = 0.3
-pre_relate_mistake_prob_min = 0.2
+pre_relate_mistake_prob_max = 0.4
+pre_relate_mistake_prob_min = 0.3
 post_relate_mistake_prob_max = 0.05
 post_relate_mistake_prob_min = 0.01
 

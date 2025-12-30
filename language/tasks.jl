@@ -1,6 +1,6 @@
 using Plots 
 
-include("full_language.jl")
+# include("full_language.jl")
 tab = "  "
 abstract type Task end
 abstract type RationalNumberTask <: Task end 
@@ -56,8 +56,28 @@ function evaluate_task(task::NumbersBetweenZeroOne)
 end
 
 function evaluate_task(task::ArithmeticProblem)
-    r1, r2, op = task.input 
-    correct_equals(Base.invokelatest(eval(op), r1, r2), task.output)
+    r1, r2, op = task.input
+    actual_op = nothing
+    # println(op)
+    if op == :+ 
+        actual_op = :add
+    elseif op == :- 
+        actual_op = :subtract
+    elseif op == :* 
+        actual_op = :multiply
+    elseif op == :/
+        actual_op = :divide
+    elseif op in [:<, :isequal, :>]
+        actual_op = :compare 
+    else
+        actual_op = op
+    end
+
+    if actual_op == :compare 
+        correct_equals(Base.invokelatest(eval(actual_op), r1, r2, op), task.output)
+    else
+        correct_equals(Base.invokelatest(eval(actual_op), r1, r2), task.output)
+    end
 end
 
 function evaluate_task(task::HalveDoubleProblem)
@@ -96,6 +116,8 @@ function correct_equals(x::Number, y::Bool)
 end
 
 function correct_equals(x::Bool, y::Bool)
+    println(x)
+    println(y)
     x == y
 end
 
