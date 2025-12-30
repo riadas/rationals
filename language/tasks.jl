@@ -31,7 +31,7 @@ end
 
 struct ArithmeticProblem <: RationalNumberTask
     input::Tuple{Number, Number, Symbol}
-    output::Number
+    output::Union{Number, Bool}
 end
 
 struct HalveDoubleProblem <: RationalNumberTask
@@ -91,6 +91,14 @@ function correct_equals(x::Number, y::Number)
     cast_float(RationalNumber(x)) == cast_float(RationalNumber(y))
 end
 
+function correct_equals(x::Number, y::Bool)
+    false
+end
+
+function correct_equals(x::Bool, y::Bool)
+    x == y
+end
+
 halve_task = HalveDoubleProblem((RN(1), :halve), RN(1, 2))
 double_task = HalveDoubleProblem((RN(1, 2), :double), RN(1))
 
@@ -101,6 +109,9 @@ divide_task = ArithmeticProblem((NN(2), NN(3), :divide), RN(2, 3))
 is_a_number_task = NumbersBetweenZeroOne(nothing, true)
 
 arithmetic_task = ArithmeticProblem((RN(1, 3), RN(1, 3), :+), RN(2, 3))
+subtraction_task = ArithmeticProblem((RN(2, 3), RN(1, 2), :-), RN(1, 6))
+
+compare_task = ArithmeticProblem((RN(1, 3), RN(1, 5), :<), false)
 
 get_to_zero_space_task = GetToZeroSpace(nothing, true)
 get_to_zero_rationals_task = GetToZeroRationals(nothing, true)
@@ -134,6 +145,7 @@ task_dict = Dict([
     "divide_task" => (divide_task, 1),
     "is_a_number_task" => (is_a_number_task, 1),
     "arithmetic_task" => (arithmetic_task, 1),
+    "compare_task" => (compare_task, 1),
     "get_to_zero_space_task" => (get_to_zero_space_task, 2),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
@@ -153,7 +165,11 @@ function compute_score(lang_name, task_dict, dir_prefix="")
     num_tasks = sum(map(k -> task_dict[k][2], [keys(task_dict)...]))
 
     println(lang_name)
-    include("$(dir_prefix)/$(lang_name)")
+    if occursin("VARIANT", lang_name)
+        include("$(dir_prefix)/didactic/rational_number/variants/$(lang_name)")
+    else
+        include("$(dir_prefix)/$(lang_name)")
+    end
     score = 0
     for task_name in keys(task_dict)
         task, task_count = task_dict[task_name] 
