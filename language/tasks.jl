@@ -1,6 +1,6 @@
 using Plots 
 
-# include("full_language.jl")
+include("1_halving_doubling_physical_language.jl")
 tab = "  "
 abstract type Task end
 abstract type RationalNumberTask <: Task end 
@@ -159,7 +159,7 @@ tasks = [
     get_to_zero_weight_task,
 ]
 
-task_dict = Dict([
+dataset = Dict([
     "halve_task" => (halve_task, 1),
     "double_task" => (double_task, 1),
     "split_task" => (split_task, 1),
@@ -183,8 +183,8 @@ function format(op)
 end
 
 
-function compute_score(lang_name, task_dict, dir_prefix="")
-    num_tasks = sum(map(k -> task_dict[k][2], [keys(task_dict)...]))
+function compute_score(lang_name, dataset, dir_prefix="")
+    num_tasks = sum(map(k -> dataset[k][2], [keys(dataset)...]))
 
     println(lang_name)
     if occursin("VARIANT", lang_name)
@@ -193,8 +193,8 @@ function compute_score(lang_name, task_dict, dir_prefix="")
         include("$(dir_prefix)/$(lang_name)")
     end
     score = 0
-    for task_name in keys(task_dict)
-        task, task_count = task_dict[task_name] 
+    for task_name in keys(dataset)
+        task, task_count = dataset[task_name] 
         # println("$(tab)$(typeof(task))")
         # if task isa ArithmeticProblem
         #     println("$(tab)$(join(map(x -> string(x), [task.input[1], format(task.input[3]), task.input[2]]), " "))")
@@ -223,7 +223,7 @@ end
 
 # scores = []
 # for language in languages 
-#     score = compute_score(language, task_dict)
+#     score = compute_score(language, dataset)
 #     push!(scores, score)
 # end
 

@@ -2,6 +2,7 @@
 
 # using Plots 
 # using Combinatorics
+# using JSON
 
 # language_names = map(x -> "L$(x)", collect(1:8))
 
@@ -255,66 +256,34 @@
 # language_names_pretty, language_name_to_definition_spec, language_name_to_spec = generate_selected_languages()
 # language_names = map(x -> "L$(x)", collect(1:length(language_names_pretty)))
 
-# # COST COMPUTATION
-# function compute_complexity_cost(language)
-#     lang_spec = language_name_to_spec[language]
-#     lang_definition_spec = language_name_to_definition_spec[language]
-#     sum(map(k -> compute_complexity_cost(k, lang_spec, lang_definition_spec), [keys(lang_spec)...]))
-# end
-
-# function compute_complexity_cost(k, lang_spec, lang_definition_spec)
-#     lang_spec[k] != "UN" ? length(split(lang_definition_spec[k], "")) : 0 # lang_spec[k] ? 1 : 0
-# end
-
-# function compute_parsimony_cost(language)
-#     lang_spec = language_name_to_spec[language]
-#     sum(map(k -> compute_parsimony_cost(k, lang_spec), [keys(lang_spec)...]))
-# end
-
-# function compute_parsimony_cost(k, lang_spec)
-#     cost = 0
-#     if lang_spec["relate"] != "RN" && !(k in ["multiply_op", "divide_op"])
-#         cost += 1 # 100
-#     end
-#     cost
-# end
-
-# # UTILITY COMPONENT 1/2
-# function compute_representation_cost(language)
-#     compute_complexity_cost(language) + compute_parsimony_cost(language)
-# end
-
-# # ACCURACY COMPUTATION
-task_dict = Dict([
-    "halve_task" => (halve_task, 10),
-    "double_task" => (double_task, 10),
-    "split_task" => (split_task, 5),
-    "combine_task" => (combine_task, 5),
-    "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 15), # 15 vs. 0 MODIFY
-    "arithmetic_task" => (arithmetic_task, 10), # MODIFY
-    "subtraction_task" => (subtraction_task, 10),
-    "compare_task" => (compare_task, 10),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 5),
-    "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
-    "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
-])
-relate_task_proportion = task_dict["is_a_number_task"][2] / sum(map(k -> task_dict[k][2], [keys(task_dict)...]))
-
-function compute_task_accuracy_base(lang_name, task_dict)
-    compute_score(lang_name, task_dict, "../..")
+# COST COMPUTATION
+function compute_complexity_cost(language)
+    lang_spec = language_name_to_spec[language]
+    lang_definition_spec = language_name_to_definition_spec[language]
+    sum(map(k -> compute_complexity_cost(k, lang_spec, lang_definition_spec), [keys(lang_spec)...]))
 end
 
-# base_accuracies = Dict()
-# for language_name in language_names_pretty 
-#     base_accuracies[language_name] = Dict()
-#     for task_name in keys(task_dict)
-#         atom_task_dict = Dict()
-#         atom_task_dict[task_name] = (task_dict[task_name][1], 1)
-#         accuracy = compute_task_accuracy_base(language_name, atom_task_dict)
-#         base_accuracies[language_name][task_name] = accuracy
-#     end
-# end
+function compute_complexity_cost(k, lang_spec, lang_definition_spec)
+    lang_spec[k] != "UN" ? length(split(lang_definition_spec[k], "")) : 0 # lang_spec[k] ? 1 : 0
+end
+
+function compute_parsimony_cost(language)
+    lang_spec = language_name_to_spec[language]
+    sum(map(k -> compute_parsimony_cost(k, lang_spec), [keys(lang_spec)...]))
+end
+
+function compute_parsimony_cost(k, lang_spec)
+    cost = 0
+    if lang_spec["relate"] != "RN" && !(k in ["multiply_op", "divide_op"])
+        cost += 1 # 100
+    end
+    cost
+end
+
+# UTILITY COMPONENT 1/2
+function compute_representation_cost(language)
+    compute_complexity_cost(language) + compute_parsimony_cost(language)
+end
 
 # UTILITY COMPONENT 2/2
 function compute_task_accuracy_efficient(lang_name, task_dict)
@@ -335,77 +304,10 @@ end
 # language_names = language_names[1:8]
 # language_names_pretty = language_names_pretty[1:8]
 
-# FINAL ACCURACIES
-accuracies = []
-for language_name in language_names_pretty 
-    push!(accuracies, compute_task_accuracy_efficient(language_name, task_dict))
-end
-# accuracies[1] = 0.0
-
-# FINAL COSTS
-memory_costs = []
-for language in language_names_pretty
-    cost = compute_representation_cost(language)
-    push!(memory_costs, cost)
-end
-# memory_costs[7] = 10 * memory_costs[7]
-memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
-# memory_costs[7] = 1.25 * memory_costs[7]
-# memory_costs[6] = 1.25 * memory_costs[6]
-# memory_costs[5] = 0.5 * memory_costs[5]
-
-computational_costs = map(x -> 0.5, 1:length(language_names))
-
-accuracy_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:8]), accuracies[1:8], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0))
-
-memory_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:8]), memory_costs[1:8], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0))
-
-computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:8]), computational_costs[1:8], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
-
-plot(accuracy_plot, memory_cost_plot, computation_cost_plot, layout=(3, 1), size=(600, 525 * 3))
-
-
 # INFERENCE AND PLOTTING
 function compute_utility(language_index, t)
     gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
 end
-
-time_step_unit = 0.0001
-num_time_steps = 500
-
-gamma_c = 2.0
-cost_c = 0.01
-x_vals = collect(0:time_step_unit:num_time_steps*time_step_unit * 1/5)
-line_plot = nothing 
-yvals_dict = Dict()
-for i in 1:length(language_names)
-    y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + computational_costs[i] - 0.50), x_vals)
-    if isnothing(line_plot)
-        global line_plot = plot(x_vals, y_vals, size=(600, 450), xlims=(0.0, 0.01), ylims=(-0.0085, 0.0115), legend=false, label=replace(join(split(language_names_pretty[i], "_")[2:end], " "), "language.jl" => ""), title="Utility vs. Cost Tolerance (Time)", xlabel="Cost Tolerance (Time)", ylabel="Utility")
-    else
-        global line_plot = plot(line_plot, x_vals, y_vals, size=(600, 450),  xlims=(0.0, 0.01), ylims=(-0.0085, 0.0115), legend=false, label=replace(join(split(language_names_pretty[i], "_")[2:end], " "), "language.jl" => ""), title="Utility vs. Cost Tolerance (Time)",  xlabel="Cost Tolerance (Time)", ylabel="Utility")
-    end
-    yvals_dict[i] = y_vals
-end
-
-max_indexes = []
-maxs = []
-for i in 1:length(x_vals) 
-    vals = map(arr -> arr[i], map(n -> yvals_dict[n], 1:length(language_names)))
-    # println(vals)
-    index = findall(v -> v == maximum(vals), vals)[1]
-    push!(max_indexes, index)
-    push!(maxs, replace(join(split(language_names_pretty[index], "_")[2:end], " "), "language.jl" => ""))
-    # println(maxs[end])
-end
-
-# line_plot
-
-max_utility_plot = bar(ones(length(maxs)), color = map(i -> vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], max_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
-
-plot(line_plot, max_utility_plot, layout=(2, 1), size=(600, 550))
-# line_plot
-
 
 # BACKGROUND PROPOSER
 function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
@@ -475,17 +377,15 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                     end
                 end
                 possible_combos = filter(x -> x != [], [combinations(forgetting_possibility_indices)...])
-                overall_forgetting_prob = 0.0
-                individual_function_forgetting_prob = 0.0 * pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min)
+                forgetting_prob = 0.1 * pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min)
                 for combo in possible_combos 
-                    forgetting_prob = individual_function_forgetting_prob * 1/length(possible_combos)
+                    individual_function_forgetting_prob = forgetting_prob / length(possible_combos)
                     if rederive_bool 
                         no_rederiv_factor = (0.05)^(length(function_names) - length(combo))
                     else
                         no_rederiv_factor = 1.0
                     end
-                    final_forgetting_prob = forgetting_prob * no_rederiv_factor
-                    overall_forgetting_prob += final_forgetting_prob
+                    individual_function_forgetting_prob = individual_function_forgetting_prob * no_rederiv_factor
                     new_spec = deepcopy(lang_spec)
                     for i in combo 
                         new_spec[function_names[i]] = "NN"
@@ -493,25 +393,24 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                     new_lang_name = find_lang_name_with_spec(new_spec)
                     new_lang_name_idx = findall(x -> x == new_lang_name, language_names_pretty)[1]
                     
-                    new_distribution[new_lang_name_idx] += distribution[i] * final_forgetting_prob
+                    new_distribution[new_lang_name_idx] += distribution[i] * individual_function_forgetting_prob
                 end
-                # @show overall_forgetting_prob 
-                arr = filter(x -> x > 1, new_distribution)
-                if arr != []
-                    println("OOPS")
-                    println(arr)
-                    println(sum(new_distribution))
-                        println(findall(x -> x > 1, new_distribution))
-                end
+                # arr = filter(x -> x > 1, new_distribution)
+                # if arr != []
+                #     println("OOPS")
+                #     println(arr)
+                #     println(sum(new_distribution))
+                #         println(findall(x -> x > 1, new_distribution))
+                # end
 
-                arr = filter(x -> x < 0, new_distribution)
-                if arr != []
-                    println("OOPS 2 BELOW ZERO")
-                    println(arr)
-                    println(findall(x -> x < 0, new_distribution))
-                end
+                # arr = filter(x -> x < 0, new_distribution)
+                # if arr != []
+                #     println("OOPS 2 BELOW ZERO")
+                #     println(arr)
+                #     println(findall(x -> x < 0, new_distribution))
+                # end
 
-                new_distribution[i] = distribution[i] * (1 - overall_forgetting_prob)
+                new_distribution[i] = distribution[i] * (1 - forgetting_prob)
             end
         end
     end
@@ -523,9 +422,10 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, true)
     
     # VERSION 2: redistribute weight with proposal
+    # # forgetting step: option A
     # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # false
 
-    # forgetting step
+    # # forgetting step: option B
     new_distribution = compute_next_distribution(distribution, t, 0.0, true)
     
     # rederivation step 
@@ -592,7 +492,7 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
                         transition_prob = 0                        
                     else
                         transition_prob = 2 * (1 - transition_prob_identity) * transition_prob_base^(-dist)
-                        # w = 0.1
+                        w = 0.1
                         # transition_prob = ((1 - w) * transition_prob_identity + w * 1.0) - transition_prob_identity # 0.001
                     end
                 end
@@ -627,67 +527,308 @@ function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backw
     next_distribution
 end
 
-num_time_steps = 1000
+# # BASE ACCURACY COMPUTATION
+# good curriculum
+good_task_dict = Dict([
+    "halve_task" => (halve_task, 10),
+    "double_task" => (double_task, 10),
+    "split_task" => (split_task, 5),
+    "combine_task" => (combine_task, 5),
+    "divide_task" => (divide_task, 5),
+    "is_a_number_task" => (is_a_number_task, 15), # 15 vs. 0 MODIFY
+    "arithmetic_task" => (arithmetic_task, 10), # MODIFY
+    "subtraction_task" => (subtraction_task, 10),
+    "compare_task" => (compare_task, 10),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 5),
+    "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
+    "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
+])
+
+# bad curriculum
+bad_task_dict = Dict([
+    "halve_task" => (halve_task, 10),
+    "double_task" => (double_task, 10),
+    "split_task" => (split_task, 5),
+    "combine_task" => (combine_task, 5),
+    "divide_task" => (divide_task, 5),
+    "is_a_number_task" => (is_a_number_task, 0), # 15 vs. 0 MODIFY
+    "arithmetic_task" => (arithmetic_task, 10), # MODIFY
+    "subtraction_task" => (subtraction_task, 10),
+    "compare_task" => (compare_task, 10),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 5),
+    "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
+    "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
+])
+test_name_to_task_dict = Dict(["good_curriculum" => good_task_dict, "bad_curriculum" => bad_task_dict])
+
+function compute_task_accuracy_base(lang_name, task_dict)
+    compute_score(lang_name, task_dict, "../..")
+end
+
+# base_accuracies = Dict()
+# for language_name in language_names_pretty 
+#     base_accuracies[language_name] = Dict()
+#     for task_name in keys(good_task_dict)
+#         atom_task_dict = Dict()
+#         atom_task_dict[task_name] = (good_task_dict[task_name][1], 1)
+#         accuracy = compute_task_accuracy_base(language_name, atom_task_dict)
+#         base_accuracies[language_name][task_name] = accuracy
+#     end
+# end
+
+# PARAMS
+
+# time step params
+time_step_unit = 0.0001
+num_time_steps = 1000 # 3000
+
+# utility function params 
+gamma_c = 2.0
+cost_c = 0.01
+utility_base = 10.0 # 10000.0
+# gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
+
+# transition probability params
 transition_prob_identity_base = 0.99
 transition_prob_identity_rate = 0.0003
 transition_prob_base = 2 # 100.0 2
-utility_base = 10.0 # 10000.0
 instruction_bias_base = 100.0
 
+# forgetting params (under forgetting model variant 1)
 pre_relate_mistake_prob_max = 0.4
 pre_relate_mistake_prob_min = 0.3
 post_relate_mistake_prob_max = 0.05
 post_relate_mistake_prob_min = 0.01
 
-max_lot_indexes = [1]
-max_lots = [language_names_pretty[1]]
-curr_distribution = map(x -> 0.0, 1:length(language_names))
-curr_distribution[1] = 1.0
-all_distributions = []
-push!(all_distributions, curr_distribution)
+test_name = "bad_curriculum"
+params_dict = Dict([
+    "time_step_unit" => time_step_unit, 
+    "num_time_steps" => num_time_steps,
+
+    "gamma_c" => gamma_c,
+    "cost_c" => cost_c,
+    "utility_base" => utility_base,
+
+    "transition_prob_identity_base" => transition_prob_identity_base,
+    "transition_prob_identity_rate" => transition_prob_identity_rate,
+    "transition_prob_base" => transition_prob_base,
+    "instruction_bias_base" => instruction_bias_base,
+
+    "pre_relate_mistake_prob_max" => pre_relate_mistake_prob_max,
+    "pre_relate_mistake_prob_min" => pre_relate_mistake_prob_min,
+    "post_relate_mistake_prob_max" => post_relate_mistake_prob_max,
+    "post_relate_mistake_prob_min" => post_relate_mistake_prob_min,
+    
+    "forgetting_model_variant" => 2, # 1 2 3
+    "test_name" => test_name
+])
+
+accuracies = []
+memory_costs = []
+computation_costs = []
+relate_task_proportion = 0.0
 relate_factors = []
-for t in 0:time_step_unit:num_time_steps*time_step_unit
-    next_distribution = compute_next_distribution(curr_distribution, t, 1.0)
+all_distributions = []
+function run_test(test_name_, save_fig_title="")
+    global test_name = test_name_
+    params_dict["test_name"] = test_name
 
-    # forgetting/rederivation-based modification of new distribution
-    next_distribution = update_dist_based_on_forgetting_and_resynthesis(next_distribution, t)
-    # println(length(next_distribution))
-    # println(maximum(next_distribution))
-    # @show next_distribution
-    index = findall(v -> v == maximum(next_distribution), next_distribution)[1]
-    push!(max_lot_indexes, index)
-    push!(max_lots, join(split(language_names_pretty[index], "_")[2:end], " "))
-    if max_lot_indexes[end] != max_lot_indexes[end - 1]
-        println(t)
+    task_dict = test_name_to_task_dict[test_name]
+    params_dict["curriculum"] = Dict(map(k -> k => task_dict[k][2], collect(keys(task_dict))))
+
+    global relate_task_proportion = task_dict["is_a_number_task"][2] / sum(map(k -> task_dict[k][2], [keys(task_dict)...]))
+
+    # FINAL ACCURACIES
+    global accuracies = []
+    for language_name in language_names_pretty 
+        push!(accuracies, compute_task_accuracy_efficient(language_name, task_dict))
+    end
+    # accuracies[1] = 0.0
+
+    # FINAL COSTS
+    global memory_costs = []
+    for language in language_names_pretty
+        cost = compute_representation_cost(language)
+        push!(memory_costs, cost)
+    end
+    # memory_costs[7] = 10 * memory_costs[7]
+    memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
+    memory_costs[7] = 1.25 * memory_costs[7]
+    memory_costs[6] = 1.25 * memory_costs[6]
+    # memory_costs[5] = 0.5 * memory_costs[5]
+
+    global computational_costs = map(x -> 0.5, 1:length(language_names))
+
+    accuracy_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:8]), accuracies[1:8], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0))
+
+    memory_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:8]), memory_costs[1:8], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0))
+
+    computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:8]), computational_costs[1:8], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
+
+    plot(accuracy_plot, memory_cost_plot, computation_cost_plot, layout=(3, 1), size=(600, 525 * 3))
+
+    # UTILITY PLOTS
+    x_vals = collect(0:time_step_unit:num_time_steps*time_step_unit)
+    line_plot = nothing 
+    yvals_dict = Dict()
+    max_yvals = 0.0
+    min_yvals = 0.0
+    for i in 1:length(language_names[1:8])
+        y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + computational_costs[i] - 0.50), x_vals)
+        max_yvals = maximum([max_yvals, maximum(y_vals)])
+        min_yvals = minimum([min_yvals, minimum(y_vals)])
+
+        if isnothing(line_plot)
+            line_plot = plot(x_vals, y_vals, size=(600, 450), xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)", xlabel="Cost Tolerance (Time)", ylabel="Utility")
+        else
+            line_plot = plot(line_plot, x_vals, y_vals, size=(600, 450),  xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)",  xlabel="Cost Tolerance (Time)", ylabel="Utility")
+        end
+        yvals_dict[i] = y_vals
     end
 
-    global curr_distribution = next_distribution
-    # if curr_distribution[6] != 0
-    #     println("hello 1")
-    # end
+    max_indexes = []
+    maxs = []
+    for i in 1:length(x_vals) 
+        vals = map(arr -> arr[i], map(n -> yvals_dict[n], 1:length(language_names[1:8])))
+        # println(vals)
+        index = findall(v -> v == maximum(vals), vals)[1]
+        push!(max_indexes, index)
+        push!(maxs, replace(join(split(language_names_pretty[index], "_")[2:end], " "), "language.jl" => ""))
+        # println(maxs[end])
+    end
+
+    # line_plot
+
+    max_utility_plot = bar(ones(length(maxs)), color = map(i -> vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], max_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+
+    # plot(line_plot, max_utility_plot, layout=(2, 1), size=(600, 550))
+    # line_plot
+
+    # MAP LoT PLOTS
+
+    max_lot_indexes = [1]
+    max_lots = [language_names_pretty[1]]
+    curr_distribution = map(x -> 0.0, 1:length(language_names))
+    curr_distribution[1] = 1.0
     push!(all_distributions, curr_distribution)
-    println("$(length(max_lots)): $(max_lots[end])")
+    for t in 0:time_step_unit:num_time_steps*time_step_unit
+        next_distribution = compute_next_distribution(curr_distribution, t, 1.0)
 
+        # forgetting/rederivation-based modification of new distribution
+        next_distribution = update_dist_based_on_forgetting_and_resynthesis(next_distribution, t)
+        # println(length(next_distribution))
+        # println(maximum(next_distribution))
+        # @show next_distribution
+        index = findall(v -> v == maximum(next_distribution), next_distribution)[1]
+        push!(max_lot_indexes, index)
+        push!(max_lots, join(split(language_names_pretty[index], "_")[2:end], " "))
+        if max_lot_indexes[end] != max_lot_indexes[end - 1]
+            println(t)
+        end
+
+        curr_distribution = next_distribution
+        # if curr_distribution[6] != 0
+        #     println("hello 1")
+        # end
+        push!(all_distributions, curr_distribution)
+        println("$(length(max_lots)): $(max_lots[end])")
+
+    end
+
+    max_lot_plot = bar(ones(length(max_lots)), color = map(i -> vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], max_lot_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+
+
+    dist_plot = nothing
+    dist_xs = collect(0:time_step_unit:num_time_steps*time_step_unit)
+    dist_ys = []
+    for i in 1:length(language_names)
+        println(i)
+        dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
+        if isnothing(dist_plot)
+            dist_plot = plot(dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5)
+        else
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5)
+        end
+    end
+
+    max_lot_plot
+
+    # dist_plot
+
+    # plot(dist_plot, max_lot_plot, layout=(2, 1))
+
+    accuracy_over_time_values = []
+    for t in 1:length(max_lot_indexes)
+        idx = max_lot_indexes[t]
+        lang_name = language_names_pretty[idx]
+        relate_defined = language_name_to_spec[lang_name]["relate"] == "RN"
+        base_accuracy = accuracies[idx]
+        mistake_prob = 0.0
+        if relate_defined 
+            mistake_prob = post_relate_mistake_prob_max - (t / num_time_steps) * (post_relate_mistake_prob_max - post_relate_mistake_prob_min)
+        else
+            mistake_prob = pre_relate_mistake_prob_max - (t / num_time_steps) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min)
+        end
+        final_accuracy = base_accuracy * (1 - mistake_prob)
+        push!(accuracy_over_time_values, final_accuracy)
+    end
+
+    accuracy_over_time_plot = plot(collect(0:length(max_lot_indexes) - 1), accuracy_over_time_values, xlims=(0,length(max_lot_indexes) - 1), ylims=(0.0, 1.0), title="MAP LoT Accuracy over Time", xlabel="Time", ylabel="Accuracy")
+
+
+    average_accuracy_over_time_values = map(x -> 0.0, 1:length(dist_xs))
+    for i in 1:length(language_names)
+        println(i)
+        lang_name = language_names_pretty[i]
+        language_proportions = map(t -> all_distributions[t][i], 1:length(dist_xs))
+        
+        relate_defined = language_name_to_spec[lang_name]["relate"] == "RN"
+        base_accuracy = accuracies[i]
+        accuracies_over_time = []
+        for t in 1:length(dist_xs)
+            mistake_prob = 0.0
+            if relate_defined 
+                mistake_prob = post_relate_mistake_prob_max - (t / length(dist_xs)) * (post_relate_mistake_prob_max - post_relate_mistake_prob_min)
+            else
+                mistake_prob = pre_relate_mistake_prob_max - (t / length(dist_xs)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min)
+            end
+            final_accuracy = base_accuracy * (1 - mistake_prob)
+            push!(accuracies_over_time, final_accuracy)
+        end
+        accuracy_proportions = language_proportions .* accuracies_over_time
+        average_accuracy_over_time_values = average_accuracy_over_time_values .+ accuracy_proportions
+    end
+
+    average_accuracy_over_time_plot = plot(collect(0:length(dist_xs) - 1), average_accuracy_over_time_values, xlims=(0,length(dist_xs) - 1), ylims=(0.0, 1.0), title="Average LoT Accuracy over Time", xlabel="Time", ylabel="Accuracy")
+
+    if save_fig_title != ""
+        p = plot(line_plot, max_utility_plot, dist_plot, max_lot_plot, average_accuracy_over_time_plot, layout=(5, 1), size=(1000, 2500))
+        save_fig_with_params(p, "$(test_name)_$(save_fig_title).png")
+    end 
+
+    (line_plot, max_utility_plot, dist_plot, max_lot_plot, accuracy_over_time_plot, average_accuracy_over_time_plot)
 end
 
-max_lot_plot = bar(ones(length(max_lots)), color = map(i -> vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], max_lot_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+plot_directory = "language/didactic/rational_number/plots"
+function save_fig_with_params(p, title)
+    num_plot_dirs = length(readdir(plot_directory))
 
+    new_plot_dir = "$(plot_directory)/plot_$(num_plot_dirs)"
+    mkdir(new_plot_dir)
 
-dist_plot = nothing
-dist_xs = collect(0:time_step_unit:num_time_steps*time_step_unit)
-dist_ys = []
-for i in 1:length(language_names)
-    println(i)
-    global dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
-    if isnothing(dist_plot)
-        global dist_plot = plot(dist_xs, dist_ys, label=language_names_pretty[i], legend=false, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
-    else
-        global dist_plot = plot(dist_plot, dist_xs, dist_ys, label=language_names_pretty[i], legend=false, size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time")
+    # save plot
+    savefig(p, "$(new_plot_dir)/$(title)")
+
+    # save plot params
+    open(replace("$(new_plot_dir)/$(title)", ".png" => "_params.json"), "w+") do f 
+        JSON.print(f, params_dict, 4)
     end
 end
 
-max_lot_plot
+# line_plot, max_utility_plot, dist_plot, max_lot_plot, accuracy_over_time_plot, average_accuracy_over_time_plot = run_test("bad_curriculum", "plot")
+# line_plot, max_utility_plot, dist_plot, max_lot_plot, accuracy_over_time_plot, average_accuracy_over_time_plot = run_test("bad_curriculum", "")
 
-# dist_plot
+# p = plot(line_plot, max_utility_plot, dist_plot, max_lot_plot, average_accuracy_over_time_plot, layout=(5, 1), size=(1000, 2500))
+# save_fig_with_params(p, "$(test_name)_plot.png")
 
-plot(dist_plot, max_lot_plot, layout=(2, 1))
+# plot(dist_plot, max_lot_plot, layout=(2, 1))
