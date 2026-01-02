@@ -135,6 +135,8 @@ subtraction_task = ArithmeticProblem((RN(2, 3), RN(1, 2), :-), RN(1, 6))
 
 compare_task = ArithmeticProblem((RN(1, 3), RN(1, 5), :<), false)
 
+compare_task_bad = ArithmeticProblem((RN(1, 5), RN(2, 5), :<), true)
+
 get_to_zero_space_task = GetToZeroSpace(nothing, true)
 get_to_zero_rationals_task = GetToZeroRationals(nothing, true)
 get_to_zero_weight_task = GetToZeroMatter(nothing, true)

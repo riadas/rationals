@@ -1,8 +1,8 @@
-# include("../../tasks.jl")
+include("../../tasks.jl")
 
-# using Plots 
-# using Combinatorics
-# using JSON
+using Plots 
+using Combinatorics
+using JSON
 
 language_names = map(x -> "L$(x)", collect(1:10))
 
@@ -341,7 +341,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
 
     if spec1["relate"] != "RN" && spec2["relate"] == "RN"
         if foldl(&, map(x -> spec1[x] == "RN", ["halve1", "halve2", "halve3", "double", "divide1", "divide2", "divide3", "multiply"]), init=true)
-            dist += 200 - 180 * relate_factor
+            dist += 200 - 185 * relate_factor
         else
             dist = dist * 100
         end
@@ -411,7 +411,7 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                     end
                 end
                 possible_combos = filter(x -> x != [], [combinations(forgetting_possibility_indices)...])
-                forgetting_prob = 0.1 * pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min)
+                forgetting_prob = 0.1 * (pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min))
                 for combo in possible_combos 
                     individual_function_forgetting_prob = forgetting_prob / length(possible_combos)
                     if rederive_bool 
@@ -453,17 +453,17 @@ end
 
 function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instruction_bias=0.0)
     # VERSON 1: redistribute weight without proposal
-    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, true)
+    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, true)
     
     # VERSION 2: redistribute weight with proposal
     # # forgetting step: option A
     # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # false
 
     # # forgetting step: option B
-    new_distribution = compute_next_distribution(distribution, t, 0.0, true)
+    # new_distribution = compute_next_distribution(distribution, t, 0.0, true)
     
-    # rederivation step 
-    new_distribution = compute_next_distribution(new_distribution, t, 0.0, false)
+    # # rederivation step 
+    # new_distribution = compute_next_distribution(new_distribution, t, 0.0, false)
     # new_distribution
 
     # arr = filter(x -> x > 1, new_distribution)
@@ -572,8 +572,9 @@ good_task_dict = Dict([
     "is_a_number_task" => (is_a_number_task, 22), # 15 vs. 0 MODIFY
     "arithmetic_task" => (arithmetic_task, 8), # MODIFY
     "subtraction_task" => (subtraction_task, 8),
-    "compare_task" => (compare_task, 7),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 3),
+    "compare_task" => (compare_task, 5),
+    "compare_task_bad" => (compare_task_bad, 2),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 1),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
 ])
@@ -588,8 +589,9 @@ bad_task_dict = Dict([
     "is_a_number_task" => (is_a_number_task, 1), # 15 vs. 0 MODIFY
     "arithmetic_task" => (arithmetic_task, 8), # MODIFY
     "subtraction_task" => (subtraction_task, 8),
-    "compare_task" => (compare_task, 7),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 3),
+    "compare_task" => (compare_task, 5),
+    "compare_task_bad" => (compare_task_bad, 2),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 1),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
 ])
@@ -599,7 +601,7 @@ task_groups = Dict([
     "1_halving_doubling_notation" => ["halve_task", "double_task"],
     "2_splitting_combining_dividing_notation" => ["split_task", "combine_task", "divide_task"],
     "3_dividing_physically_grounded_understanding" => ["is_a_number_task"],
-    "4_arithmetic_memorization" => ["arithmetic_task", "subtraction_task", "compare_task"],
+    "4_arithmetic_memorization" => ["arithmetic_task", "subtraction_task", "compare_task", "compare_task_bad"],
     "5_infinite_divisibility" => ["get_to_zero_space_task", "get_to_zero_rationals_task", "get_to_zero_weight_task"],
 ])
 
@@ -633,7 +635,7 @@ function plot_all_curricula(subset=false)
     if subset 
         task_group_dict = Dict([
             "3_dividing_physically_grounded_understanding" => ["is_a_number_task"],
-            "4_arithmetic_memorization" => ["arithmetic_task", "subtraction_task", "compare_task"],
+            "4_arithmetic_memorization" => ["arithmetic_task", "subtraction_task", "compare_task", "compare_task_bad"],
         ])
         colors = [
             collect(palette(:tab10))[4],
@@ -674,7 +676,7 @@ num_time_steps = 1500 # 3000
 # utility function params 
 gamma_c = 1.2
 cost_c = 0.01
-utility_base = 3.4 # 10000.0
+utility_base = 10.0 # 10000.0
 # gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
 
 # transition probability params
