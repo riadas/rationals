@@ -341,7 +341,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
 
     if spec1["relate"] != "RN" && spec2["relate"] == "RN"
         if foldl(&, map(x -> spec1[x] == "RN", ["halve1", "halve2", "halve3", "double", "divide1", "divide2", "divide3", "multiply"]), init=true)
-            dist += 200 - 165 * relate_factor
+            dist += 200 - 180 * relate_factor
         else
             dist = dist * 100
         end
@@ -543,7 +543,7 @@ end
 function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false)
     utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
     
-    relate_factor = t * relate_task_proportion * 500
+    relate_factor = t * relate_task_proportion * 400
     relate_factor = relate_factor > 1 ? 1 : relate_factor
     push!(relate_factors, relate_factor)
     transition_probabilities, _ = plot_heatmap(relate_factor, "", spec2_taught, backwards_bool)
@@ -573,7 +573,7 @@ good_task_dict = Dict([
     "arithmetic_task" => (arithmetic_task, 8), # MODIFY
     "subtraction_task" => (subtraction_task, 8),
     "compare_task" => (compare_task, 7),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 5),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 3),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
 ])
@@ -589,7 +589,7 @@ bad_task_dict = Dict([
     "arithmetic_task" => (arithmetic_task, 8), # MODIFY
     "subtraction_task" => (subtraction_task, 8),
     "compare_task" => (compare_task, 7),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 5),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 3),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
 ])
@@ -674,7 +674,7 @@ num_time_steps = 1500 # 3000
 # utility function params 
 gamma_c = 1.2
 cost_c = 0.01
-utility_base = 3.5 # 10000.0
+utility_base = 3.4 # 10000.0
 # gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
 
 # transition probability params
@@ -743,12 +743,15 @@ function run_test(test_name_, save_fig_title="")
     end
     # memory_costs[7] = 10 * memory_costs[7]
     memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
-    memory_costs[7] = 1.15 * memory_costs[7]
-    memory_costs[6] = 1.15 * memory_costs[6]
-    memory_costs[8] = 1.2 * memory_costs[8]
 
-    memory_costs[9] = 1.15 * memory_costs[9]
-    memory_costs[10] = 1.15 * memory_costs[10]
+    memory_costs[4] = memory_costs[4] * 0.6 # grounded arithmetic
+    memory_costs[5] = memory_costs[5] * 0.6 # grounded arithmetic
+    memory_costs[6] = 1.15 * memory_costs[6] * 0.6 # space
+    memory_costs[7] = 1.15 * memory_costs[7] * 0.6 # all
+    memory_costs[8] = 1.2 * memory_costs[8] # ungrounded arithmetic
+
+    memory_costs[9] = 1.15 * memory_costs[9] * 0.6 # number
+    memory_costs[10] = 1.15 * memory_costs[10] * 0.6 # weight
 
 
     global computational_costs = map(x -> 0.5, 1:length(language_names))
@@ -840,9 +843,9 @@ function run_test(test_name_, save_fig_title="")
         println(i)
         dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
         if isnothing(dist_plot)
-            dist_plot = plot(dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :topright : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
+            dist_plot = plot(dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :right : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
         else
-            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :topright : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :right : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
         end
     end
 
