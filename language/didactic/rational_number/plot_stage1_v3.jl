@@ -320,7 +320,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
 
     if spec1["relate"] != "RN" && spec2["relate"] == "RN"
         if foldl(&, map(x -> spec1[x] == "RN", ["halve1", "halve2", "halve3", "double", "divide1", "divide2", "divide3", "multiply"]), init=true)
-            dist += 20 - 15 * relate_factor
+            dist += 42.5 - 15 * relate_factor
         else
             dist += 100
         end
@@ -503,7 +503,7 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
     end
 
     heatmap_values_matrix = reshape(vcat(heatmap_values...), (length(language_names), length(language_names)))
-    heatmap_values, heatmap(language_names, language_names, heatmap_values_matrix, aspect_ratio=:equal, clims=(0.0, 1.0), title=title, xrotation=270, tickfontsize=5, titlefontsize=11)
+    heatmap_values, heatmap(language_names, language_names, heatmap_values_matrix, aspect_ratio=:equal, clims=(0.0, 1.0), title=title, xrotation=270, tickfontsize=5, titlefontsize=12)
 end
 
 function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false)
@@ -535,10 +535,10 @@ good_task_dict = Dict([
     "split_task" => (split_task, 5),
     "combine_task" => (combine_task, 5),
     "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 15), # 15 vs. 0 MODIFY
-    "arithmetic_task" => (arithmetic_task, 10), # MODIFY
-    "subtraction_task" => (subtraction_task, 10),
-    "compare_task" => (compare_task, 10),
+    "is_a_number_task" => (is_a_number_task, 22), # 15 vs. 0 MODIFY
+    "arithmetic_task" => (arithmetic_task, 8), # MODIFY
+    "subtraction_task" => (subtraction_task, 7),
+    "compare_task" => (compare_task, 7),
     "get_to_zero_space_task" => (get_to_zero_space_task, 5),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
@@ -551,15 +551,70 @@ bad_task_dict = Dict([
     "split_task" => (split_task, 5),
     "combine_task" => (combine_task, 5),
     "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 0), # 15 vs. 0 MODIFY
-    "arithmetic_task" => (arithmetic_task, 10), # MODIFY
-    "subtraction_task" => (subtraction_task, 10),
-    "compare_task" => (compare_task, 10),
+    "is_a_number_task" => (is_a_number_task, 1), # 15 vs. 0 MODIFY
+    "arithmetic_task" => (arithmetic_task, 8), # MODIFY
+    "subtraction_task" => (subtraction_task, 7),
+    "compare_task" => (compare_task, 7),
     "get_to_zero_space_task" => (get_to_zero_space_task, 5),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
 ])
 test_name_to_task_dict = Dict(["good_curriculum" => good_task_dict, "bad_curriculum" => bad_task_dict])
+
+task_groups = Dict([
+    "1_halving_doubling_notation" => ["halve_task", "double_task"],
+    "2_splitting_combining_dividing_notation" => ["split_task", "combine_task", "divide_task"],
+    "3_dividing_physically_grounded_understanding" => ["is_a_number_task"],
+    "4_arithmetic_memorization" => ["arithmetic_task", "subtraction_task", "compare_task"],
+    "5_infinite_divisibility" => ["get_to_zero_space_task", "get_to_zero_rationals_task", "get_to_zero_weight_task"],
+])
+
+original_colors = collect(palette(:tab10))
+curriculum_plot_colors = [
+    original_colors[2], 
+    original_colors[3], 
+    original_colors[4], 
+    original_colors[8], 
+    original_colors[7]
+]
+
+function plot_curriculum(test_name_, task_group_dict=task_groups, colors=curriculum_plot_colors)
+    curriculum_dict = test_name_to_task_dict[test_name_]
+    if test_name_ == "good_curriculum"
+        title_prefix_modifier = "Understanding-Based"
+        title_suffix_modifier = "(Analogy Driven)"
+    else
+        title_prefix_modifier = "Memorization-Based"
+        title_suffix_modifier = "(Procedure Driven)"
+    end
+
+    task_group_names = sort(collect(keys(task_group_dict)))
+    counts = map(group_name -> sum(map(task_name -> curriculum_dict[task_name][end], task_group_dict[group_name])), task_group_names)
+    proportions = counts ./ sum(counts)
+    scale = length(colors) == 2 ? 1 : 2
+    curriculum_plot = bar(map(x -> join(split(x, "_")[2:end], "\n"), task_group_names), proportions, color = colors, size=(320 * scale, 525), bar_width=1, xlabel="Task Type", ylabel="Proportion", legend=false, titlefontsize=11, xtickfontsize=7, xguidefontsize=10, yguidefontsize=10, title="$(title_prefix_modifier) Curriculum\n$(title_suffix_modifier)", ylims=(0.0, 1.0))
+end
+
+function plot_all_curricula(subset=false)
+    if subset 
+        task_group_dict = Dict([
+            "3_dividing_physically_grounded_understanding" => ["is_a_number_task"],
+            "4_arithmetic_memorization" => ["arithmetic_task", "subtraction_task", "compare_task"],
+        ])
+        colors = [
+            collect(palette(:tab10))[4],
+            collect(palette(:tab10))[8],
+        ]
+    else
+        task_group_dict = task_groups
+        colors = curriculum_plot_colors
+    end
+    good_curriculum_plot = plot_curriculum("good_curriculum", task_group_dict, colors)
+    bad_curriculum_plot = plot_curriculum("bad_curriculum", task_group_dict, colors)
+    
+    scale = subset ? 1 : 2
+    plot(good_curriculum_plot, bad_curriculum_plot, layout=(1, 2), size=(640 * scale, 525))
+end
 
 function compute_task_accuracy_base(lang_name, task_dict)
     compute_score(lang_name, task_dict, "../..")
@@ -629,6 +684,7 @@ computation_costs = []
 relate_task_proportion = 0.0
 relate_factors = []
 all_distributions = []
+
 function run_test(test_name_, save_fig_title="")
     global test_name = test_name_
     params_dict["test_name"] = test_name
@@ -659,9 +715,9 @@ function run_test(test_name_, save_fig_title="")
 
     global computational_costs = map(x -> 0.5, 1:length(language_names))
 
-    accuracy_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:8]), accuracies[1:8], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0))
+    accuracy_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:8]), accuracies[1:8], color = collect(palette(:tab10)), xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0), xtickfontsize=6)
 
-    memory_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:8]), memory_costs[1:8], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0))
+    memory_cost_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:8]), memory_costs[1:8] ./ maximum(memory_costs[1:8]), color = collect(palette(:tab10)), xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0), xtickfontsize=6)
 
     computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:8]), computational_costs[1:8], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
 
@@ -745,9 +801,9 @@ function run_test(test_name_, save_fig_title="")
         println(i)
         dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
         if isnothing(dist_plot)
-            dist_plot = plot(dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5)
+            dist_plot = plot(dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
         else
-            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5)
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
         end
     end
 
@@ -799,7 +855,7 @@ function run_test(test_name_, save_fig_title="")
         average_accuracy_over_time_values = average_accuracy_over_time_values .+ accuracy_proportions
     end
 
-    average_accuracy_over_time_plot = plot(collect(0:length(dist_xs) - 1), average_accuracy_over_time_values, xlims=(0,length(dist_xs) - 1), ylims=(0.0, 1.0), title="Average LoT Accuracy over Time", xlabel="Time", ylabel="Accuracy")
+    average_accuracy_over_time_plot = plot(collect(0:length(dist_xs) - 1), average_accuracy_over_time_values, xlims=(0,length(dist_xs) - 1), ylims=(0.0, 1.0), title="Average LoT Accuracy over Time", xlabel="Time", ylabel="Accuracy", titlefontsize=12)
 
     if save_fig_title != ""
         p = plot(line_plot, max_utility_plot, dist_plot, max_lot_plot, average_accuracy_over_time_plot, layout=(5, 1), size=(1000, 2500))
