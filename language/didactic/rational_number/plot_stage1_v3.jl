@@ -333,15 +333,19 @@ end
 # BACKGROUND PROPOSER
 function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
     dist = 0
+    spec2_lower_at_least_once = false
     for k in keys(spec1)
         if spec1[k] != spec2[k]
             dist += 1
+            if spec1[k] == "RN" && spec2[k] in ["NN", "UN"] # || spec1[k] == "NN" && spec2[k] == "UN"
+                spec2_lower_at_least_once = true # spec1 is lower at least once
+            end
         end
     end
 
     if spec1["relate"] != "RN" && spec2["relate"] == "RN"
         if foldl(&, map(x -> spec1[x] == "RN", ["halve1", "halve2", "halve3", "double", "divide1", "divide2", "divide3", "multiply"]), init=true)
-            dist += 200 - 185 * relate_factor
+            dist += 200 - 180 * relate_factor
         else
             dist = dist * 100
         end
@@ -365,7 +369,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
         if spec1["infinite_divisibility_space"] != "RN"
             dist = dist * 1000
         else
-            dist = dist / 1.2
+            dist = dist / 1.4
         end
     end
 
@@ -378,17 +382,22 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
         if spec1["infinite_divisibility_space"] != "RN"
             dist = dist * 1000
         else
-            dist = dist / 1.2
+            dist = dist / 1.4
         end
     end
 
     s = 0
     if dist != 0 
-        if count(x -> x == "RN", collect(values(spec1))) > count(x -> x == "RN", collect(values(spec2)))
-            s = 1 
+        if spec2_lower_at_least_once 
+            s = 1 # no forgetting rule: spec1 would have to forget an RN definition to reach spec2
         else
-            s = -1
+            s = -1 
         end
+        # if count(x -> x == "RN", collect(values(spec1))) > count(x -> x == "RN", collect(values(spec2)))
+        #     s = 1 
+        # else
+        #     s = -1
+        # end
     end
 
     dist = dist * instruction_bias_base^(1 - spec2_taught)
@@ -453,7 +462,7 @@ end
 
 function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instruction_bias=0.0)
     # VERSON 1: redistribute weight without proposal
-    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, true)
+    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, true)
     
     # VERSION 2: redistribute weight with proposal
     # # forgetting step: option A
@@ -463,7 +472,7 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     # new_distribution = compute_next_distribution(distribution, t, 0.0, true)
     
     # # rederivation step 
-    # new_distribution = compute_next_distribution(new_distribution, t, 0.0, false)
+    # new_distribution = compute_next_distribution(new_distribution, t, 0.0, true) # false
     # new_distribution
 
     # arr = filter(x -> x > 1, new_distribution)
@@ -481,10 +490,10 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     #     println(findall(x -> x < 0, new_distribution))
     # end
     
-    new_distribution
+    # new_distribution 
 
     # VERSON 0: null
-    # distribution
+    distribution # CURRENTLY RUNNING THIS VERSION
 end
 
 function find_lang_name_with_spec(spec)
@@ -569,11 +578,11 @@ good_task_dict = Dict([
     "split_task" => (split_task, 5),
     "combine_task" => (combine_task, 5),
     "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 22), # 15 vs. 0 MODIFY
+    "is_a_number_task" => (is_a_number_task, 24), # 15 vs. 0 MODIFY
     "arithmetic_task" => (arithmetic_task, 8), # MODIFY
     "subtraction_task" => (subtraction_task, 8),
     "compare_task" => (compare_task, 5),
-    "compare_task_bad" => (compare_task_bad, 2),
+    "compare_task_bad" => (compare_task_bad, 3),
     "get_to_zero_space_task" => (get_to_zero_space_task, 1),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
@@ -590,7 +599,7 @@ bad_task_dict = Dict([
     "arithmetic_task" => (arithmetic_task, 8), # MODIFY
     "subtraction_task" => (subtraction_task, 8),
     "compare_task" => (compare_task, 5),
-    "compare_task_bad" => (compare_task_bad, 2),
+    "compare_task_bad" => (compare_task_bad, 3),
     "get_to_zero_space_task" => (get_to_zero_space_task, 1),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
@@ -671,11 +680,11 @@ end
 
 # time step params
 time_step_unit = 0.0001
-num_time_steps = 1500 # 3000
+num_time_steps = 2000 # 3000
 
 # utility function params 
-gamma_c = 1.2
-cost_c = 0.01
+gamma_c = 1.5
+cost_c = 0.021
 utility_base = 10.0 # 10000.0
 # gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
 
