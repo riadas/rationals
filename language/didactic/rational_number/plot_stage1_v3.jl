@@ -4,7 +4,7 @@
 # using Combinatorics
 # using JSON
 
-language_names = map(x -> "L$(x)", collect(1:8))
+language_names = map(x -> "L$(x)", collect(1:10))
 
 language_names_pretty = [
     "1_halving_doubling_physical_language.jl", 
@@ -15,7 +15,9 @@ language_names_pretty = [
     "6_space_infinite_divisibility_language.jl", 
     "7_abstract_infinite_divisibility_language.jl",
     "8_rational_arithmetic_ungrounded_language.jl",
-    ]
+    "9_number_infinite_divisibility_language.jl", 
+    "10_matter_infinite_divisibility_language.jl", 
+]
 
 base_language_definition_spec = Dict([
     "halve1" => "RN(1, 2)",
@@ -146,6 +148,20 @@ language8_spec = deepcopy(language5_spec)
 language8_definition_spec["relate"] = default_dict["relate"]
 language8_spec["relate"] = false
 
+# NEW: LANGUAGE 9
+language9_definition_spec = deepcopy(language5_definition_spec)
+language9_spec = deepcopy(language5_spec)
+
+language9_definition_spec["infinite_divisibility_number"] = "infinite"
+language9_spec["infinite_divisibility_number"] = true
+
+# NEW: LANGUAGE 10
+language10_definition_spec = deepcopy(language5_definition_spec)
+language10_spec = deepcopy(language5_spec)
+
+language10_definition_spec["infinite_divisibility_weight"] = "infinite"
+language10_spec["infinite_divisibility_weight"] = true
+
 language_name_to_definition_spec = Dict([
     "1_halving_doubling_physical_language.jl" => language1_definition_spec, 
     "2_halving_doubling_notation_language.jl" => language2_definition_spec, 
@@ -155,6 +171,8 @@ language_name_to_definition_spec = Dict([
     "6_space_infinite_divisibility_language.jl" => language6_definition_spec, 
     "7_abstract_infinite_divisibility_language.jl"  => language7_definition_spec,
     "8_rational_arithmetic_ungrounded_language.jl"  => language8_definition_spec,
+    "9_number_infinite_divisibility_language.jl"  => language9_definition_spec,
+    "10_matter_infinite_divisibility_language.jl"  => language10_definition_spec,
 ])
 
 language_name_to_spec = Dict([
@@ -166,6 +184,8 @@ language_name_to_spec = Dict([
     "6_space_infinite_divisibility_language.jl" => language6_spec, 
     "7_abstract_infinite_divisibility_language.jl"  => language7_spec,
     "8_rational_arithmetic_ungrounded_language.jl"  => language8_spec,
+    "9_number_infinite_divisibility_language.jl"  => language9_spec,
+    "10_matter_infinite_divisibility_language.jl"  => language10_spec,
 ])
 
 
@@ -302,8 +322,8 @@ function compute_task_accuracy_efficient(lang_name, task_dict)
 end
 
 # TEMPORARILY REMOVE VARIANTS
-language_names = language_names[1:8]
-language_names_pretty = language_names_pretty[1:8]
+# language_names = language_names[1:10]
+# language_names_pretty = language_names_pretty[1:10]
 
 # INFERENCE AND PLOTTING
 function compute_utility(language_index, t)
@@ -321,9 +341,9 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
 
     if spec1["relate"] != "RN" && spec2["relate"] == "RN"
         if foldl(&, map(x -> spec1[x] == "RN", ["halve1", "halve2", "halve3", "double", "divide1", "divide2", "divide3", "multiply"]), init=true)
-            dist += 50 - 15 * relate_factor
+            dist += 200 - 165 * relate_factor
         else
-            dist += 100
+            dist = dist * 100
         end
     end
 
@@ -345,7 +365,20 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
         if spec1["infinite_divisibility_space"] != "RN"
             dist = dist * 1000
         else
-            dist = dist / 3.5
+            dist = dist / 1.2
+        end
+    end
+
+    if spec1["infinite_divisibility_weight"] != "RN" && spec2["infinite_divisibility_weight"] == "RN"
+        # dist += 10
+        if spec1["relate"] != "RN"
+            dist = dist * 100
+        end
+
+        if spec1["infinite_divisibility_space"] != "RN"
+            dist = dist * 1000
+        else
+            dist = dist / 1.2
         end
     end
 
@@ -482,7 +515,7 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
             l2 = language_names_pretty[j]
             l1_spec = language_name_to_spec[l1]
             l2_spec = language_name_to_spec[l2]
-            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, j < 9 ? spec2_taught : 0.0)
+            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, j < 11 ? spec2_taught : 0.0)
             if dist == 0
                 transition_prob = transition_prob_identity
             else
@@ -510,7 +543,7 @@ end
 function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false)
     utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
     
-    relate_factor = t * relate_task_proportion * 1000
+    relate_factor = t * relate_task_proportion * 500
     relate_factor = relate_factor > 1 ? 1 : relate_factor
     push!(relate_factors, relate_factor)
     transition_probabilities, _ = plot_heatmap(relate_factor, "", spec2_taught, backwards_bool)
@@ -636,12 +669,12 @@ end
 
 # time step params
 time_step_unit = 0.0001
-num_time_steps = 1000 # 3000
+num_time_steps = 1500 # 3000
 
 # utility function params 
-gamma_c = 1.1
+gamma_c = 1.2
 cost_c = 0.01
-utility_base = 10.0 # 10000.0
+utility_base = 3.5 # 10000.0
 # gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
 
 # transition probability params
@@ -714,13 +747,17 @@ function run_test(test_name_, save_fig_title="")
     memory_costs[6] = 1.15 * memory_costs[6]
     memory_costs[8] = 1.2 * memory_costs[8]
 
+    memory_costs[9] = 1.15 * memory_costs[9]
+    memory_costs[10] = 1.15 * memory_costs[10]
+
+
     global computational_costs = map(x -> 0.5, 1:length(language_names))
 
-    accuracy_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:8]), accuracies[1:8], color = collect(palette(:tab10)), xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0), xtickfontsize=6)
+    accuracy_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:10]), accuracies[1:10], color = collect(palette(:tab10)), xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0), xtickfontsize=6)
 
-    memory_cost_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:8]), memory_costs[1:8] ./ maximum(memory_costs[1:8]), color = collect(palette(:tab10)), xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0), xtickfontsize=6)
+    memory_cost_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:10]), memory_costs[1:10] ./ maximum(memory_costs[1:10]), color = collect(palette(:tab10)), xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0), xtickfontsize=6)
 
-    computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:8]), computational_costs[1:8], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
+    computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:10]), computational_costs[1:10], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
 
     plot(accuracy_plot, memory_cost_plot, computation_cost_plot, layout=(3, 1), size=(600, 525 * 3))
 
@@ -730,7 +767,7 @@ function run_test(test_name_, save_fig_title="")
     yvals_dict = Dict()
     max_yvals = 0.0
     min_yvals = 0.0
-    for i in 1:length(language_names[1:8])
+    for i in 1:length(language_names[1:10])
         y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + computational_costs[i] - 0.50), x_vals)
         max_yvals = maximum([max_yvals, maximum(y_vals)])
         min_yvals = minimum([min_yvals, minimum(y_vals)])
@@ -746,7 +783,7 @@ function run_test(test_name_, save_fig_title="")
     max_indexes = []
     maxs = []
     for i in 1:length(x_vals) 
-        vals = map(arr -> arr[i], map(n -> yvals_dict[n], 1:length(language_names[1:8])))
+        vals = map(arr -> arr[i], map(n -> yvals_dict[n], 1:length(language_names[1:10])))
         # println(vals)
         index = findall(v -> v == maximum(vals), vals)[1]
         push!(max_indexes, index)
@@ -776,6 +813,7 @@ function run_test(test_name_, save_fig_title="")
         # println(length(next_distribution))
         # println(maximum(next_distribution))
         # @show next_distribution
+        # println(maximum(next_distribution))
         index = findall(v -> v == maximum(next_distribution), next_distribution)[1]
         push!(max_lot_indexes, index)
         push!(max_lots, join(split(language_names_pretty[index], "_")[2:end], " "))
@@ -802,9 +840,9 @@ function run_test(test_name_, save_fig_title="")
         println(i)
         dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
         if isnothing(dist_plot)
-            dist_plot = plot(dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :topright : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
+            dist_plot = plot(dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :topright : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
         else
-            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :topright : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :topright : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
         end
     end
 
