@@ -638,7 +638,7 @@ time_step_unit = 0.0001
 num_time_steps = 1000 # 3000
 
 # utility function params 
-gamma_c = 2.0
+gamma_c = 1.1
 cost_c = 0.01
 utility_base = 10.0 # 10000.0
 # gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
@@ -711,7 +711,7 @@ function run_test(test_name_, save_fig_title="")
     memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
     memory_costs[7] = 1.25 * memory_costs[7]
     memory_costs[6] = 1.25 * memory_costs[6]
-    # memory_costs[5] = 0.5 * memory_costs[5]
+    memory_costs[8] = 1.2 * memory_costs[8]
 
     global computational_costs = map(x -> 0.5, 1:length(language_names))
 
@@ -801,9 +801,9 @@ function run_test(test_name_, save_fig_title="")
         println(i)
         dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
         if isnothing(dist_plot)
-            dist_plot = plot(dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
+            dist_plot = plot(dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :topright : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
         else
-            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 9) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :topright : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
         end
     end
 
