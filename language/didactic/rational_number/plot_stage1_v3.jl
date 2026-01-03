@@ -336,7 +336,13 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
     spec2_lower_at_least_once = false
     for k in keys(spec1)
         if spec1[k] != spec2[k]
-            dist += 1
+            # dist += 1
+            if spec1[k] == "RN" || spec2[k] == "RN"
+                dist += 1
+            else
+                dist += 0.5
+            end
+
             if spec1[k] == "RN" && spec2[k] in ["NN", "UN"] # || spec1[k] == "NN" && spec2[k] == "UN"
                 spec2_lower_at_least_once = true # spec1 is lower at least once
             end
@@ -405,6 +411,51 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
     (dist, s)
 end
 
+"""
+                function_names = ["compare_op", "add_op", "subtract_op"]
+                forgetting_possibility_indices = []
+                for i in 1:length(function_names)
+                    if lang_spec[function_names[i]] == "RN"
+                        push!(forgetting_possibility_indices, i)
+                    end
+                end
+                possible_combos = filter(x -> x != [], [combinations(forgetting_possibility_indices)...])
+                forgetting_prob = 0.1 * (pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min))
+
+                # individual_prob_ratios = map(x -> length(x) * (0.5)^(length(x)), possible_combos)
+                individual_prob_ratios = ones(length(possible_combos)) 
+                # if rederive_bool 
+                #     individual_prob_ratios = map(i -> individual_prob_ratios[i] * (0.5)^(length(function_names) - length(possible_combos[i])), 1:length(possible_combos))
+                # end
+                individual_prob_ratios = (individual_prob_ratios ./ sum(individual_prob_ratios)) .* forgetting_prob
+
+                for i in 1:length(possible_combos)
+                    combo = possible_combos[i]
+                    # individual_function_forgetting_prob = individual_prob_ratios[i]
+                    # individual_function_forgetting_prob = forgetting_prob / length(possible_combos) 
+                    # if individual_function_forgetting_prob != forgetting_prob / length(possible_combos) 
+                    #     println("whattt")
+                    #     println(possible_combos)
+                    #     println(individual_function_forgetting_prob)
+                    #     println(forgetting_prob / length(possible_combos) )
+                    # end
+                    individual_function_forgetting_prob = forgetting_prob / length(possible_combos)
+                    if rederive_bool 
+                        no_rederiv_factor = (0.5)^(length(function_names) - length(combo)) # (0.05)^(length(function_names) - length(combo))
+                    else
+                        no_rederiv_factor = 1.0
+                    end
+                    individual_function_forgetting_prob = individual_function_forgetting_prob * no_rederiv_factor
+                    new_spec = deepcopy(lang_spec)
+                    for i in combo 
+                        new_spec[function_names[i]] = "NN"
+                    end
+                    new_lang_name = find_lang_name_with_spec(new_spec)
+                    new_lang_name_idx = findall(x -> x == new_lang_name, language_names_pretty)[1]
+                    
+                    new_distribution[new_lang_name_idx] += distribution[i] * individual_function_forgetting_prob
+"""
+
 function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, rederive_bool=true)
     new_distribution = deepcopy(distribution)
     for i in 1:length(distribution)
@@ -421,14 +472,17 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                 end
                 possible_combos = filter(x -> x != [], [combinations(forgetting_possibility_indices)...])
                 forgetting_prob = 0.1 * (pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min))
+                rederiv_factors = []
+                #scale_factor = sum(map(combo -> length(combo) * (0.5)^(length(combo)), possible_combos))
                 for combo in possible_combos 
                     individual_function_forgetting_prob = forgetting_prob / length(possible_combos)
                     if rederive_bool 
-                        no_rederiv_factor = (0.05)^(length(function_names) - length(combo))
+                        rederiv_factor = (0.5)^(length(function_names) - length(combo)) # * length(combo) * (0.5)^(length(combo)) / scale_factor
                     else
-                        no_rederiv_factor = 1.0
+                        rederiv_factor = 1.0 # * length(combo) * (0.5)^(length(combo)) / scale_factor
                     end
-                    individual_function_forgetting_prob = individual_function_forgetting_prob * no_rederiv_factor
+                    push!(rederiv_factors, rederiv_factor)
+                    individual_function_forgetting_prob = individual_function_forgetting_prob * rederiv_factor
                     new_spec = deepcopy(lang_spec)
                     for i in combo 
                         new_spec[function_names[i]] = "NN"
@@ -453,7 +507,7 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                 #     println(findall(x -> x < 0, new_distribution))
                 # end
 
-                new_distribution[i] = distribution[i] * (1 - forgetting_prob)
+                new_distribution[i] = distribution[i] * (1 - (forgetting_prob / length(possible_combos)) * sum(rederiv_factors))
             end
         end
     end
@@ -461,12 +515,12 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
 end
 
 function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instruction_bias=0.0)
-    # VERSON 1: redistribute weight without proposal
-    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, true)
+    # VERSON 1: redistribute weight without proposal 
+    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false)
     
     # VERSION 2: redistribute weight with proposal
     # # forgetting step: option A
-    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # false
+    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, true) # FORGETTING AND RESYNTHESIS
 
     # # forgetting step: option B
     # new_distribution = compute_next_distribution(distribution, t, 0.0, true)
@@ -490,10 +544,10 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     #     println(findall(x -> x < 0, new_distribution))
     # end
     
-    # new_distribution 
+    new_distribution 
 
     # VERSON 0: null
-    distribution # CURRENTLY RUNNING THIS VERSION
+    # distribution # CURRENTLY RUNNING THIS VERSION
 end
 
 function find_lang_name_with_spec(spec)
@@ -683,7 +737,7 @@ time_step_unit = 0.0001
 num_time_steps = 2000 # 3000
 
 # utility function params 
-gamma_c = 1.5
+gamma_c = 1.7
 cost_c = 0.021
 utility_base = 10.0 # 10000.0
 # gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
@@ -763,6 +817,29 @@ function run_test(test_name_, save_fig_title="")
 
     memory_costs[9] = 1.15 * memory_costs[9] * 0.6 # number
     memory_costs[10] = 1.15 * memory_costs[10] * 0.6 # weight
+
+    for base_language_name in map(i -> language_names_pretty[i], 5:7)
+        variant_language_name_idxs = findall(x -> occursin("VARIANT", x) && occursin(base_language_name, x), language_names_pretty)
+        for i in variant_language_name_idxs 
+            memory_costs[i] = 0.6 * memory_costs[i]
+        end
+    end
+
+    for base_language_name in map(i -> language_names_pretty[i], 6:7)
+        variant_language_name_idxs = findall(x -> occursin("VARIANT", x) && occursin(base_language_name, x), language_names_pretty)
+        for i in variant_language_name_idxs 
+            memory_costs[i] = 1.15 * memory_costs[i]
+        end
+    end
+
+    for base_language_name in map(i -> language_names_pretty[i], 8)
+        variant_language_name_idxs = findall(x -> occursin("VARIANT", x) && occursin(base_language_name, x), language_names_pretty)
+        for i in variant_language_name_idxs 
+            memory_costs[i] = 1.2 * memory_costs[i]
+        end
+    end
+
+    # memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
 
 
     global computational_costs = map(x -> 0.5, 1:length(language_names))
