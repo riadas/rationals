@@ -284,25 +284,28 @@ function compute_complexity_cost(language)
 end
 
 function compute_complexity_cost(k, lang_spec, lang_definition_spec)
-    lang_spec[k] != "UN" ? length(split(lang_definition_spec[k], "")) : 0 # lang_spec[k] ? 1 : 0
+    scale_factor = occursin("infinite_divisibility", k) ? 10.0 : 1.0
+    # lang_spec[k] != "UN" ? scale_factor * length(split(lang_definition_spec[k], "")) : 0 # lang_spec[k] ? 1 : 0
+    lang_spec[k] != "UN" ? scale_factor * sum(map(x -> size(Meta.parse(x)), split(lang_definition_spec[k], "\n"))) : 0 # lang_spec[k] ? 1 : 0
 end
 
 function compute_parsimony_cost(language)
     lang_spec = language_name_to_spec[language]
-    sum(map(k -> compute_parsimony_cost(k, lang_spec), [keys(lang_spec)...]))
+    lang_spec["relate"] == "RN" ? 0.6 : 1.0
+    # sum(map(k -> compute_parsimony_cost(k, lang_spec), [keys(lang_spec)...]))
 end
 
 function compute_parsimony_cost(k, lang_spec)
-    cost = 0
-    if lang_spec["relate"] != "RN" && !(k in ["multiply_op", "divide_op"])
-        cost += 1 # 100
-    end
-    cost
+    # cost = 0
+    # if lang_spec["relate"] != "RN" && !(k in ["multiply_op", "divide_op"])
+    #     cost += 1 # 100
+    # end
+    # cost
 end
 
 # UTILITY COMPONENT 1/2
 function compute_representation_cost(language)
-    compute_complexity_cost(language) + compute_parsimony_cost(language)
+    compute_complexity_cost(language) * compute_parsimony_cost(language)
 end
 
 # UTILITY COMPONENT 2/2
@@ -351,7 +354,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
 
     if spec1["relate"] != "RN" && spec2["relate"] == "RN"
         if foldl(&, map(x -> spec1[x] == "RN", ["halve1", "halve2", "halve3", "double", "divide1", "divide2", "divide3", "multiply"]), init=true)
-            dist += 200 - 180 * relate_factor
+            dist += 200 - 170 * relate_factor
         else
             dist = dist * 100
         end
@@ -375,7 +378,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
         if spec1["infinite_divisibility_space"] != "RN"
             dist = dist * 1000
         else
-            dist = dist / 1.4
+            dist = dist / 2.6
         end
     end
 
@@ -388,7 +391,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
         if spec1["infinite_divisibility_space"] != "RN"
             dist = dist * 1000
         else
-            dist = dist / 1.4
+            dist = dist / 2.6
         end
     end
 
@@ -516,7 +519,7 @@ end
 
 function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instruction_bias=0.0)
     # VERSON 1: redistribute weight without proposal 
-    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false)
+    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false)
     
     # VERSION 2: redistribute weight with proposal
     # # forgetting step: option A
@@ -544,10 +547,10 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     #     println(findall(x -> x < 0, new_distribution))
     # end
     
-    new_distribution 
+    # new_distribution 
 
     # VERSON 0: null
-    # distribution # CURRENTLY RUNNING THIS VERSION
+    distribution # CURRENTLY RUNNING THIS VERSION
 end
 
 function find_lang_name_with_spec(spec)
@@ -632,8 +635,8 @@ good_task_dict = Dict([
     "split_task" => (split_task, 5),
     "combine_task" => (combine_task, 5),
     "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 24), # 15 vs. 0 MODIFY
-    "arithmetic_task" => (arithmetic_task, 8), # MODIFY
+    "is_a_number_task" => (is_a_number_task, 25), # 15 vs. 0 MODIFY
+    "arithmetic_task" => (arithmetic_task, 9), # MODIFY
     "subtraction_task" => (subtraction_task, 8),
     "compare_task" => (compare_task, 5),
     "compare_task_bad" => (compare_task_bad, 3),
@@ -650,7 +653,7 @@ bad_task_dict = Dict([
     "combine_task" => (combine_task, 5),
     "divide_task" => (divide_task, 5),
     "is_a_number_task" => (is_a_number_task, 1), # 15 vs. 0 MODIFY
-    "arithmetic_task" => (arithmetic_task, 8), # MODIFY
+    "arithmetic_task" => (arithmetic_task, 9), # MODIFY
     "subtraction_task" => (subtraction_task, 8),
     "compare_task" => (compare_task, 5),
     "compare_task_bad" => (compare_task_bad, 3),
@@ -734,12 +737,12 @@ end
 
 # time step params
 time_step_unit = 0.0001
-num_time_steps = 2000 # 3000
+num_time_steps = 2500 # 3000
 
 # utility function params 
-gamma_c = 1.7
-cost_c = 0.021
-utility_base = 10.0 # 10000.0
+gamma_c = 2.0
+cost_c = 0.03
+utility_base = 9.0 # 10000.0
 # gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
 
 # transition probability params
@@ -809,35 +812,35 @@ function run_test(test_name_, save_fig_title="")
     # memory_costs[7] = 10 * memory_costs[7]
     memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
 
-    memory_costs[4] = memory_costs[4] * 0.6 # grounded arithmetic
-    memory_costs[5] = memory_costs[5] * 0.6 # grounded arithmetic
-    memory_costs[6] = 1.15 * memory_costs[6] * 0.6 # space
-    memory_costs[7] = 1.15 * memory_costs[7] * 0.6 # all
-    memory_costs[8] = 1.2 * memory_costs[8] # ungrounded arithmetic
+    # memory_costs[4] = memory_costs[4] * 0.6 # grounded arithmetic
+    # memory_costs[5] = memory_costs[5] * 0.6 # grounded arithmetic
+    # memory_costs[6] = 1.15 * memory_costs[6] * 0.6 # space
+    # memory_costs[7] = 1.15 * memory_costs[7] * 0.6 # all
+    # memory_costs[8] = 1.2 * memory_costs[8] # ungrounded arithmetic
 
-    memory_costs[9] = 1.15 * memory_costs[9] * 0.6 # number
-    memory_costs[10] = 1.15 * memory_costs[10] * 0.6 # weight
+    # memory_costs[9] = 1.15 * memory_costs[9] * 0.6 # number
+    # memory_costs[10] = 1.15 * memory_costs[10] * 0.6 # weight
 
-    for base_language_name in map(i -> language_names_pretty[i], 5:7)
-        variant_language_name_idxs = findall(x -> occursin("VARIANT", x) && occursin(base_language_name, x), language_names_pretty)
-        for i in variant_language_name_idxs 
-            memory_costs[i] = 0.6 * memory_costs[i]
-        end
-    end
+    # for base_language_name in map(i -> language_names_pretty[i], 5:7)
+    #     variant_language_name_idxs = findall(x -> occursin("VARIANT", x) && occursin(base_language_name, x), language_names_pretty)
+    #     for i in variant_language_name_idxs 
+    #         memory_costs[i] = 0.6 * memory_costs[i]
+    #     end
+    # end
 
-    for base_language_name in map(i -> language_names_pretty[i], 6:7)
-        variant_language_name_idxs = findall(x -> occursin("VARIANT", x) && occursin(base_language_name, x), language_names_pretty)
-        for i in variant_language_name_idxs 
-            memory_costs[i] = 1.15 * memory_costs[i]
-        end
-    end
+    # for base_language_name in map(i -> language_names_pretty[i], 6:7)
+    #     variant_language_name_idxs = findall(x -> occursin("VARIANT", x) && occursin(base_language_name, x), language_names_pretty)
+    #     for i in variant_language_name_idxs 
+    #         memory_costs[i] = 1.15 * memory_costs[i]
+    #     end
+    # end
 
-    for base_language_name in map(i -> language_names_pretty[i], 8)
-        variant_language_name_idxs = findall(x -> occursin("VARIANT", x) && occursin(base_language_name, x), language_names_pretty)
-        for i in variant_language_name_idxs 
-            memory_costs[i] = 1.2 * memory_costs[i]
-        end
-    end
+    # for base_language_name in map(i -> language_names_pretty[i], 8)
+    #     variant_language_name_idxs = findall(x -> occursin("VARIANT", x) && occursin(base_language_name, x), language_names_pretty)
+    #     for i in variant_language_name_idxs 
+    #         memory_costs[i] = 1.2 * memory_costs[i]
+    #     end
+    # end
 
     # memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
 
@@ -931,9 +934,9 @@ function run_test(test_name_, save_fig_title="")
         println(i)
         dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
         if isnothing(dist_plot)
-            dist_plot = plot(dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :right : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
+            dist_plot = plot(dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? false : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
         else
-            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? :right : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? false : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
         end
     end
 
@@ -1009,6 +1012,26 @@ function save_fig_with_params(p, title)
     open(replace("$(new_plot_dir)/$(title)", ".png" => "_params.json"), "w+") do f 
         JSON.print(f, params_dict, 4)
     end
+end
+
+function size(x::Expr)
+    s = 1
+    for arg in x.args 
+        s += size(arg)
+    end
+    s
+end
+
+function size(x::Symbol)
+    1
+end
+
+function size(x::Union{Int, String, Bool, Nothing})
+    1
+end
+
+function size(x::QuoteNode)
+    size(x.value)
 end
 
 # line_plot, max_utility_plot, dist_plot, max_lot_plot, accuracy_over_time_plot, average_accuracy_over_time_plot = run_test("bad_curriculum", "plot")
