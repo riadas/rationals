@@ -342,7 +342,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
             # dist += 1
             if spec1[k] == "RN" || spec2[k] == "RN"
                 if occursin("_op", k)
-                    dist += 1.6
+                    dist += 2.0 # 1.6
                 else
                     dist += 1
                 end
@@ -479,7 +479,7 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                     end
                 end
                 possible_combos = filter(x -> x != [], [combinations(forgetting_possibility_indices)...])
-                forgetting_prob = 0.1 * (pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min))
+                forgetting_prob = 0.125 * (pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min))
                 # @show forgetting_prob
                 rederiv_factors = []
                 #scale_factor = sum(map(combo -> length(combo) * (0.5)^(length(combo)), possible_combos))
@@ -619,7 +619,7 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
 end
 
 function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false)    
-    relate_factor = t * relate_task_proportion * 0.9
+    relate_factor = t * relate_task_proportion * 0.8 # 0.9
     relate_factor = relate_factor > 1 ? 1 : relate_factor
     push!(relate_factors, relate_factor)
     transition_probabilities, _ = plot_heatmap(relate_factor, "", spec2_taught, backwards_bool)
