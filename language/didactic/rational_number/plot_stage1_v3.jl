@@ -227,7 +227,7 @@ function generate_selected_languages(intrusions=["compare_op", "add_op", "subtra
     new_language_names = []
     for language_name in base_language_names_to_modify
         for combo_index in 1:length(option_combos)
-            option_combo = option_combos[combo_index] 
+            option_combo = option_combos[combo_index]
             base_definition_spec = deepcopy(language_name_to_definition_spec[language_name])
             base_spec = deepcopy(new_language_name_to_spec[language_name])
             for i in 1:length(option_combo)
@@ -341,7 +341,11 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
         if spec1[k] != spec2[k]
             # dist += 1
             if spec1[k] == "RN" || spec2[k] == "RN"
-                dist += 1
+                if occursin("_op", k)
+                    dist += 1.6
+                else
+                    dist += 1
+                end
             else
                 dist += 0.5
             end
@@ -354,7 +358,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
 
     if spec1["relate"] != "RN" && spec2["relate"] == "RN"
         if foldl(&, map(x -> spec1[x] == "RN", ["halve1", "halve2", "halve3", "double", "divide1", "divide2", "divide3", "multiply"]), init=true)
-            dist += 200 - 170 * relate_factor
+            dist += 20 - 19 * relate_factor # 200 - 199 * relate_factor
         else
             dist = dist * 100
         end
@@ -378,7 +382,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
         if spec1["infinite_divisibility_space"] != "RN"
             dist = dist * 1000
         else
-            dist = dist / 2.6
+            dist = dist / 2.0
         end
     end
 
@@ -391,7 +395,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
         if spec1["infinite_divisibility_space"] != "RN"
             dist = dist * 1000
         else
-            dist = dist / 2.6
+            dist = dist / 2.0
         end
     end
 
@@ -466,6 +470,7 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
             lang_name = language_names_pretty[i]
             lang_spec = language_name_to_spec[lang_name]
             if lang_spec["relate"] != "RN" && (lang_spec["compare_op"] == "RN" || lang_spec["add_op"] == "RN" || lang_spec["subtract_op"] == "RN")
+                # @show i
                 function_names = ["compare_op", "add_op", "subtract_op"]
                 forgetting_possibility_indices = []
                 for i in 1:length(function_names)
@@ -475,6 +480,7 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                 end
                 possible_combos = filter(x -> x != [], [combinations(forgetting_possibility_indices)...])
                 forgetting_prob = 0.1 * (pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min))
+                # @show forgetting_prob
                 rederiv_factors = []
                 #scale_factor = sum(map(combo -> length(combo) * (0.5)^(length(combo)), possible_combos))
                 for combo in possible_combos 
@@ -514,6 +520,8 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
             end
         end
     end
+    new_distribution = new_distribution ./ sum(new_distribution)
+    # @show sum(new_distribution)
     new_distribution # TODO: use instruction_bias
 end
 
@@ -523,8 +531,12 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     
     # VERSION 2: redistribute weight with proposal
     # # forgetting step: option A
-    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, true) # FORGETTING AND RESYNTHESIS
-
+    # @show distribution[8]
+    # @show distribution[end]
+    new_distribution = distribution
+    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # FORGETTING AND RESYNTHESIS
+    # @show new_distribution[8]
+    # @show new_distribution[end]
     # # forgetting step: option B
     # new_distribution = compute_next_distribution(distribution, t, 0.0, true)
     
@@ -547,10 +559,10 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     #     println(findall(x -> x < 0, new_distribution))
     # end
     
-    # new_distribution 
+    new_distribution 
 
     # VERSON 0: null
-    distribution # CURRENTLY RUNNING THIS VERSION
+    # distribution # CURRENTLY RUNNING THIS VERSION
 end
 
 function find_lang_name_with_spec(spec)
@@ -606,20 +618,31 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
     heatmap_values, heatmap(language_names, language_names, heatmap_values_matrix, aspect_ratio=:equal, clims=(0.0, 1.0), title=title, xrotation=270, tickfontsize=5, titlefontsize=12)
 end
 
-function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false)
-    utility_sum = sum(map(x -> utility_base^(compute_utility(x, t)), 1:length(language_names)))
-    
-    relate_factor = t * relate_task_proportion * 400
+function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false)    
+    relate_factor = t * relate_task_proportion * 0.9
     relate_factor = relate_factor > 1 ? 1 : relate_factor
     push!(relate_factors, relate_factor)
     transition_probabilities, _ = plot_heatmap(relate_factor, "", spec2_taught, backwards_bool)
     next_distribution = map(x -> 0.0, 1:length(language_names))
+
+    normalizer_jk_dict = Dict()
+    for j in 1:length(language_names)
+        normalizer = 0.0
+        for k in 1:length(language_names)
+            transition_prob_k = transition_probabilities[j][k]
+            utility_k = utility_base^(compute_utility(k, t))
+            normalizer += transition_prob_k * utility_k
+        end
+        normalizer_jk_dict[j] = normalizer
+    end
+
     for i in 1:length(language_names)
         total = 0.0
-        utility = utility_base^(compute_utility(i, t)) / utility_sum
+        utility = utility_base^(compute_utility(i, t))
         for j in 1:length(language_names)
             transition_prob = transition_probabilities[j][i]
-            total += transition_prob * utility * curr_distribution[j]
+            normalizer = normalizer_jk_dict[j]
+            total += curr_distribution[j] * (transition_prob * utility / normalizer)
         end
         next_distribution[i] = total
     end
@@ -635,11 +658,11 @@ good_task_dict = Dict([
     "split_task" => (split_task, 5),
     "combine_task" => (combine_task, 5),
     "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 25), # 15 vs. 0 MODIFY
-    "arithmetic_task" => (arithmetic_task, 9), # MODIFY
-    "subtraction_task" => (subtraction_task, 8),
-    "compare_task" => (compare_task, 5),
-    "compare_task_bad" => (compare_task_bad, 3),
+    "is_a_number_task" => (is_a_number_task, 18), # 15 vs. 0 MODIFY
+    "arithmetic_task" => (arithmetic_task, 6), # MODIFY
+    "subtraction_task" => (subtraction_task, 6),
+    "compare_task" => (compare_task, 4),
+    "compare_task_bad" => (compare_task_bad, 2),
     "get_to_zero_space_task" => (get_to_zero_space_task, 1),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
@@ -653,11 +676,11 @@ bad_task_dict = Dict([
     "combine_task" => (combine_task, 5),
     "divide_task" => (divide_task, 5),
     "is_a_number_task" => (is_a_number_task, 1), # 15 vs. 0 MODIFY
-    "arithmetic_task" => (arithmetic_task, 9), # MODIFY
-    "subtraction_task" => (subtraction_task, 8),
-    "compare_task" => (compare_task, 5),
-    "compare_task_bad" => (compare_task_bad, 3),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 1),
+    "arithmetic_task" => (arithmetic_task, 6), # MODIFY
+    "subtraction_task" => (subtraction_task, 6),
+    "compare_task" => (compare_task, 4),
+    "compare_task_bad" => (compare_task_bad, 2),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 2),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
 ])
@@ -736,8 +759,8 @@ end
 # PARAMS
 
 # time step params
-time_step_unit = 0.0001
-num_time_steps = 2500 # 3000
+time_step_unit = 0.01
+num_time_steps = 1000 # 6000 # 5500 # 3000
 
 # utility function params 
 gamma_c = 2.0
@@ -908,6 +931,9 @@ function run_test(test_name_, save_fig_title="")
         # println(maximum(next_distribution))
         # @show next_distribution
         # println(maximum(next_distribution))
+        if isnan(maximum(next_distribution))
+            @show next_distribution
+        end
         index = findall(v -> v == maximum(next_distribution), next_distribution)[1]
         push!(max_lot_indexes, index)
         push!(max_lots, join(split(language_names_pretty[index], "_")[2:end], " "))
@@ -934,9 +960,9 @@ function run_test(test_name_, save_fig_title="")
         println(i)
         dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
         if isnothing(dist_plot)
-            dist_plot = plot(dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? false : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
+            dist_plot = plot(dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12, linewidth=2)
         else
-            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=occursin("good", test_name) ? false : :right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12)
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12, linewidth=2)
         end
     end
 
