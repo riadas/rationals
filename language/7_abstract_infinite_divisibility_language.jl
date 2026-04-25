@@ -342,6 +342,7 @@ end
 @enum Coarseness coarse=4 fine=1000 infinite=typemax(Int32) 
 Base.:(/)(x, y::Coarseness) = x/Int(y)
 
+# INFINITE DIVISIBILITY
 infinite_divisibility_space = infinite # start: fine
 infinite_divisibility_number = infinite # start: coarse
 infinite_divisibility_weight = infinite # start: coarse

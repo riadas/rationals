@@ -1,280 +1,4 @@
-include("../../tasks.jl")
-
-using Plots 
-using Combinatorics
-using JSON
-
-language_names = map(x -> "L$(x)", collect(1:10))
-
-language_names_pretty = [
-    "1_halving_doubling_physical_language.jl", 
-    "2_halving_doubling_notation_language.jl", 
-    "3_splitting_combining_dividing_notation_language.jl", 
-    "4_dividing_grounded_understanding_language.jl", 
-    "5_rational_arithmetic_understanding_language.jl", 
-    "6_space_infinite_divisibility_language.jl", 
-    "7_abstract_infinite_divisibility_language.jl",
-    "8_rational_arithmetic_ungrounded_language.jl",
-    "9_number_infinite_divisibility_language.jl", 
-    "10_matter_infinite_divisibility_language.jl", 
-]
-
-base_language_definition_spec = Dict([
-    "halve1" => "RN(1, 2)",
-    "halve2" => "RN(n, 2)",
-    "halve3" => "RN(rn.numerator, rn.denominator * 2)",
-    "double" => "RN(rn.numerator*2, rn.denominator)",
-    "divide1" => "RN(1, n)",
-    "divide2" => "RN(rn.numerator, rn.denominator * n)",
-    "multiply" => "RN(rn.numerator*n, rn.denominator)",
-    "divide3" => "RN(n, m)",
-    # "common_multiple" => "NaturalNumber(lcm(arg1.value, arg2.value))",
-    # "scale" => "RN(rn.numerator * nn, rn.denominator * nn, false)",
-    "compare_op" => 
-        """
-        cm = common_multiple(arg1.denominator, arg2.denominator)
-        scaled_arg1 = scale(arg1, cast_NN(cm / arg1.denominator))
-        scaled_arg2 = scale(arg2, cast_NN(cm / arg2.denominator))
-        compare(arg1.numerator, arg2.numerator, operator)
-        """,
-    "add_op" => 
-        """
-        cm = common_multiple(arg1.denominator, arg2.denominator)
-        scaled_arg1 = scale(arg1, cast_NN(cm / arg1.denominator))
-        scaled_arg2 = scale(arg2, cast_NN(cm / arg2.denominator))
-        RN(add(scaled_arg1.numerator, scaled_arg2.numerator), cm)
-        """,
-    "subtract_op" => 
-        """
-        cm = common_multiple(arg1.denominator, arg2.denominator)
-        scaled_arg1 = scale(arg1, cast_NN(cm / arg1.denominator))
-        scaled_arg2 = scale(arg2, cast_NN(cm / arg2.denominator))
-        RN(subtract(scaled_arg1.numerator, scaled_arg2.numerator), cm)
-        """,
-    "multiply_op" => "RN(arg1.numerator * arg2.numerator, arg1.denominator * arg2.denominator)",
-    "divide_op" => "RN(arg1.numerator * arg2.denominator, arg1.denominator * arg2.numerator)",
-    "weight" => "obj.weight",
-    "density" => "obj.weight / obj.volume",
-    "infinite_divisibility_space" => "infinite",
-    "infinite_divisibility_number" => "infinite",
-    "infinite_divisibility_weight" => "infinite",
-    "relate" => "true",
-])
-
-default_dict = Dict([
-    "halve1" => "NullNumber",
-    "halve2" => "NullNumber",
-    "halve3" => "NullNumber",
-    "double" => "NullNumber",
-    "divide1" => "NullNumber",
-    "divide2" => "NullNumber",
-    "multiply" => "NullNumber",
-    "divide3" => "NullNumber",
-    # "common_multiple" => "NaturalNumber(lcm(arg1.value, arg2.value))",
-    # "scale" => "RN(rn.numerator * nn, rn.denominator * nn, false)",
-    "compare_op" => "NullNumber",
-    "add_op" => "NullNumber",
-    "subtract_op" => "NullNumber",
-    "multiply_op" => "NullNumber",
-    "divide_op" => "NullNumber",
-    "weight" => "undifferentiated_weight_density(obj)",
-    "density" => "undifferentiated_weight_density(obj)",
-    "infinite_divisibility_space" => "fine",
-    "infinite_divisibility_number" => "coarse",
-    "infinite_divisibility_weight" => "coarse",
-    "relate" => "false",
-])
-
-base_language_spec = Dict(map(k -> k => true, [keys(base_language_definition_spec)...]))
-
-# language specs for each language
-# LANGUAGE 1
-language1_definition_spec = deepcopy(base_language_definition_spec)
-language1_spec = deepcopy(base_language_spec)
-for k in keys(base_language_definition_spec)
-    language1_definition_spec[k] = default_dict[k]
-    language1_spec[k] = false
-end
-
-# LANGUAGE 2
-language2_definition_spec = deepcopy(base_language_definition_spec)
-language2_spec = deepcopy(base_language_spec)
-for k in keys(base_language_definition_spec)
-    if !(occursin("halve", k) || occursin("double", k))
-        language2_definition_spec[k] = default_dict[k]
-        language2_spec[k] = false
-    end
-end
-
-# LANGUAGE 3
-language3_definition_spec = deepcopy(base_language_definition_spec)
-language3_spec = deepcopy(base_language_spec)
-for k in keys(base_language_definition_spec)
-    if !(occursin("halve", k) || occursin("double", k) || k in ["divide1", "divide2", "divide3", "multiply"])
-        language3_definition_spec[k] = default_dict[k]
-        language3_spec[k] = false
-    end
-end
-
-# LANGUAGE 4
-language4_definition_spec = deepcopy(language3_definition_spec)
-language4_spec = deepcopy(language3_spec)
-language4_definition_spec["relate"] = "true"
-language4_spec["relate"] = true
-
-# LANGUAGE 5
-language5_definition_spec = deepcopy(language4_definition_spec)
-language5_spec = deepcopy(language4_spec)
-for k in keys(base_language_definition_spec)
-    if occursin("_op", k)
-        language5_definition_spec[k] = base_language_definition_spec[k]
-        language5_spec[k] = true
-    end
-end
-
-# LANGUAGE 6
-language6_definition_spec = deepcopy(language5_definition_spec)
-language6_spec = deepcopy(language5_spec)
-language6_definition_spec["infinite_divisibility_space"] = "infinite"
-language6_spec["infinite_divisibility_space"] = true
-
-# LANGUAGE 7
-language7_definition_spec = deepcopy(base_language_definition_spec)
-language7_spec = deepcopy(base_language_spec)
-
-# LANGUAGE 8 
-language8_definition_spec = deepcopy(language5_definition_spec)
-language8_spec = deepcopy(language5_spec)
-language8_definition_spec["relate"] = default_dict["relate"]
-language8_spec["relate"] = false
-
-# NEW: LANGUAGE 9
-language9_definition_spec = deepcopy(language5_definition_spec)
-language9_spec = deepcopy(language5_spec)
-
-language9_definition_spec["infinite_divisibility_number"] = "infinite"
-language9_spec["infinite_divisibility_number"] = true
-
-# NEW: LANGUAGE 10
-language10_definition_spec = deepcopy(language5_definition_spec)
-language10_spec = deepcopy(language5_spec)
-
-language10_definition_spec["infinite_divisibility_weight"] = "infinite"
-language10_spec["infinite_divisibility_weight"] = true
-
-language_name_to_definition_spec = Dict([
-    "1_halving_doubling_physical_language.jl" => language1_definition_spec, 
-    "2_halving_doubling_notation_language.jl" => language2_definition_spec, 
-    "3_splitting_combining_dividing_notation_language.jl" => language3_definition_spec, 
-    "4_dividing_grounded_understanding_language.jl" => language4_definition_spec, 
-    "5_rational_arithmetic_understanding_language.jl" => language5_definition_spec, 
-    "6_space_infinite_divisibility_language.jl" => language6_definition_spec, 
-    "7_abstract_infinite_divisibility_language.jl"  => language7_definition_spec,
-    "8_rational_arithmetic_ungrounded_language.jl"  => language8_definition_spec,
-    "9_number_infinite_divisibility_language.jl"  => language9_definition_spec,
-    "10_matter_infinite_divisibility_language.jl"  => language10_definition_spec,
-])
-
-language_name_to_spec = Dict([
-    "1_halving_doubling_physical_language.jl" => language1_spec, 
-    "2_halving_doubling_notation_language.jl" => language2_spec, 
-    "3_splitting_combining_dividing_notation_language.jl" => language3_spec, 
-    "4_dividing_grounded_understanding_language.jl" => language4_spec, 
-    "5_rational_arithmetic_understanding_language.jl" => language5_spec, 
-    "6_space_infinite_divisibility_language.jl" => language6_spec, 
-    "7_abstract_infinite_divisibility_language.jl"  => language7_spec,
-    "8_rational_arithmetic_ungrounded_language.jl"  => language8_spec,
-    "9_number_infinite_divisibility_language.jl"  => language9_spec,
-    "10_matter_infinite_divisibility_language.jl"  => language10_spec,
-])
-
-
-selected_NN_intrusions_dict = Dict([
-    "compare_op" => "nn_intrusion_compare(arg1, arg2, operator)",
-    "add_op" => "RN(arg1.numerator + arg2.numerator, arg1.denominator + arg2.denominator)",
-    "subtract_op" => "RN(arg1.numerator - arg2.numerator, arg1.denominator - arg2.denominator)",
-])
-
-function generate_selected_languages(intrusions=["compare_op", "add_op", "subtract_op"])
-    # original 8 specs, plus modifications to specs 5-8: for each, the 3^3 NN/UN versions
-    base_language_names_to_modify = [
-        "5_rational_arithmetic_understanding_language.jl", 
-        "6_space_infinite_divisibility_language.jl", 
-        "7_abstract_infinite_divisibility_language.jl",
-        "8_rational_arithmetic_ungrounded_language.jl",
-    ]
-    
-    new_language_name_to_definition_spec = Dict()
-    new_language_name_to_spec = Dict()
-    for name in language_names_pretty 
-        new_language_name_to_definition_spec[name] = deepcopy(language_name_to_definition_spec[name])
-        new_language_name_to_spec[name] = Dict()
-
-        for k in keys(language_name_to_spec[name])
-            if language_name_to_spec[name][k]
-                new_language_name_to_spec[name][k] = "RN"
-            else
-                new_language_name_to_spec[name][k] = "UN"
-            end
-        end
-
-    end
-
-    options = ["UN", "NN", "RN"]
-    option_combos = [Iterators.product(options, options, options)...]
-    filter!(c -> !(c in [("UN", "UN", "UN"), ("RN", "RN", "RN")]), option_combos)
-
-    new_language_names = []
-    for language_name in base_language_names_to_modify
-        for combo_index in 1:length(option_combos)
-            option_combo = option_combos[combo_index]
-            base_definition_spec = deepcopy(language_name_to_definition_spec[language_name])
-            base_spec = deepcopy(new_language_name_to_spec[language_name])
-            for i in 1:length(option_combo)
-                function_name = intrusions[i]
-                option_name = option_combo[i]
-                if option_name == "NN"
-                    function_definition = selected_NN_intrusions_dict[function_name]
-                elseif option_name == "UN"
-                    function_definition = default_dict[function_name]
-                else
-                    function_definition = base_language_definition_spec[function_name]
-                end
-                base_definition_spec[function_name] = function_definition
-                base_spec[function_name] = option_name
-            end
-            new_language_name = "VARIANT_$(combo_index)_$(language_name)"
-            push!(new_language_names, new_language_name)
-            new_language_name_to_definition_spec[new_language_name] = base_definition_spec
-            new_language_name_to_spec[new_language_name] = base_spec
-
-            # generate file
-            generate_language_file(new_language_name, new_language_name_to_definition_spec)
-        end        
-    end
-    all_language_names = [language_names_pretty..., new_language_names...]
-    (all_language_names, new_language_name_to_definition_spec, new_language_name_to_spec)
-end
-
-function generate_language_file(language_name, language_name_to_definition_spec)
-    language_template = read("language/didactic/rational_number/language_template.jl", String)
-    definition_spec = language_name_to_definition_spec[language_name]
-
-    for k in keys(definition_spec)
-        function_definition = definition_spec[k]
-        if function_definition == ""
-            function_definition = default_dict[k]
-        end
-        language_template = replace(language_template, "[$(k)]" => function_definition)
-    end
-
-    open("language/didactic/rational_number/variants/$(language_name)", "w+") do f 
-        write(f, language_template)
-    end
-end
-
-language_names_pretty, language_name_to_definition_spec, language_name_to_spec = generate_selected_languages()
-language_names = map(x -> "L$(x)", collect(1:length(language_names_pretty)))
+include("generate_languages.jl")
 
 # COST COMPUTATION
 function compute_complexity_cost(language)
@@ -289,23 +13,46 @@ function compute_complexity_cost(k, lang_spec, lang_definition_spec)
     lang_spec[k] != "UN" ? scale_factor * sum(map(x -> size(Meta.parse(x)), split(lang_definition_spec[k], "\n"))) : 0 # lang_spec[k] ? 1 : 0
 end
 
-function compute_parsimony_cost(language)
+function compute_parsimony_cost(language; param_effects_memory_mod=0.0)
     lang_spec = language_name_to_spec[language]
-    lang_spec["relate"] == "RN" ? 0.6 : 1.0
+    lang_spec["relate"] == "RN" ? (0.6 + param_effects_memory_mod) : 1.0
     # sum(map(k -> compute_parsimony_cost(k, lang_spec), [keys(lang_spec)...]))
 end
 
-function compute_parsimony_cost(k, lang_spec)
-    # cost = 0
-    # if lang_spec["relate"] != "RN" && !(k in ["multiply_op", "divide_op"])
-    #     cost += 1 # 100
-    # end
-    # cost
+# function compute_parsimony_cost(k, lang_spec)
+#     # cost = 0
+#     # if lang_spec["relate"] != "RN" && !(k in ["multiply_op", "divide_op"])
+#     #     cost += 1 # 100
+#     # end
+#     # cost
+# end
+
+function compute_computation_costs(base_computation_costs)
+    # normalization components
+    all_task_vals = vcat(map(l -> map(t -> base_computation_costs[l][t], task_names), language_names_pretty)...)
+    max_task_val = maximum(all_task_vals)
+    min_task_val = minimum(all_task_vals)
+
+    function normalize(x, max_task_val, min_task_val)
+        (x - min_task_val) / (max_task_val - min_task_val)
+    end
+
+    average_language_costs = []
+    for language_name in language_names_pretty 
+        task_vals = map(t -> base_computation_costs[language_name][t], task_names)
+        # below: useful for plotting, but not strictly necessary
+        normalized_task_vals = map(x -> normalize(x, max_task_val, min_task_val), task_vals)
+        push!(average_language_costs, mean(normalized_task_vals))
+    end
+    
+    average_language_costs = (average_language_costs .- minimum(average_language_costs)) ./ (maximum(average_language_costs) - minimum(average_language_costs))
+
+    average_language_costs
 end
 
 # UTILITY COMPONENT 1/2
-function compute_representation_cost(language)
-    compute_complexity_cost(language) * compute_parsimony_cost(language)
+function compute_representation_cost(language; param_effects_memory_mod=0.0)
+    compute_complexity_cost(language) * compute_parsimony_cost(language, param_effects_memory_mod=param_effects_memory_mod)
 end
 
 # UTILITY COMPONENT 2/2
@@ -324,6 +71,21 @@ function compute_task_accuracy_efficient(lang_name, task_dict)
     end
 end
 
+function compute_computation_cost_efficient(lang_name, task_dict)
+    if lang_name in keys(base_computation_costs)
+        score = 0.0 
+        total_tasks = sum(map(k -> task_dict[k][2], [keys(task_dict)...]))
+        for task_name in keys(task_dict)
+            num_tasks = task_dict[task_name][2]
+            computation_cost = base_computation_costs[lang_name][task_name]
+            score += computation_cost * num_tasks
+        end
+        score / total_tasks
+    else
+        compute_computation_cost(lang_name, task_dict, "../..")
+    end
+end
+
 # TEMPORARILY REMOVE VARIANTS
 # language_names = language_names[1:10]
 # language_names_pretty = language_names_pretty[1:10]
@@ -334,7 +96,7 @@ function compute_utility(language_index, t)
 end
 
 # BACKGROUND PROPOSER
-function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
+function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0; param_effects_distance_mod=1.0)
     dist = 0
     spec2_lower_at_least_once = false
     for k in keys(spec1)
@@ -360,7 +122,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0)
         if foldl(&, map(x -> spec1[x] == "RN", ["halve1", "halve2", "halve3", "double", "divide1", "divide2", "divide3", "multiply"]), init=true)
             dist += 20 - 19 * relate_factor # 200 - 199 * relate_factor
         else
-            dist = dist * 100
+            dist = dist * 10 * param_effects_distance_mod # * 100
         end
     end
 
@@ -534,7 +296,7 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     # @show distribution[8]
     # @show distribution[end]
     new_distribution = distribution
-    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # FORGETTING AND RESYNTHESIS
+    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # FORGETTING AND RESYNTHESIS FINAL
     # @show new_distribution[8]
     # @show new_distribution[end]
     # # forgetting step: option B
@@ -583,7 +345,7 @@ function find_lang_name_with_spec(spec)
     error("find_lang_name_with_spec: no lang_name with this spec found")
 end
 
-function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=false)
+function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=false; param_effects_distance_mod=1.0)
     transition_prob_identity = transition_prob_identity_base
     heatmap_values = []
     for i in 1:length(language_names)
@@ -593,7 +355,7 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
             l2 = language_names_pretty[j]
             l1_spec = language_name_to_spec[l1]
             l2_spec = language_name_to_spec[l2]
-            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, j < 11 ? spec2_taught : 0.0)
+            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, j < 11 ? spec2_taught : 0.0, param_effects_distance_mod=param_effects_distance_mod)
             if dist == 0
                 transition_prob = transition_prob_identity
             else
@@ -618,11 +380,11 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
     heatmap_values, heatmap(language_names, language_names, heatmap_values_matrix, aspect_ratio=:equal, clims=(0.0, 1.0), title=title, xrotation=270, tickfontsize=5, titlefontsize=12)
 end
 
-function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false)    
+function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false; param_effects_distance_mod=1.0)
     relate_factor = t * relate_task_proportion * 0.8 # 0.9
     relate_factor = relate_factor > 1 ? 1 : relate_factor
     push!(relate_factors, relate_factor)
-    transition_probabilities, _ = plot_heatmap(relate_factor, "", spec2_taught, backwards_bool)
+    transition_probabilities, _ = plot_heatmap(relate_factor, "", spec2_taught, backwards_bool, param_effects_distance_mod=param_effects_distance_mod)
     next_distribution = map(x -> 0.0, 1:length(language_names))
 
     normalizer_jk_dict = Dict()
@@ -745,16 +507,97 @@ function compute_task_accuracy_base(lang_name, task_dict)
     compute_score(lang_name, task_dict, "../..")
 end
 
-# base_accuracies = Dict()
-# for language_name in language_names_pretty 
-#     base_accuracies[language_name] = Dict()
-#     for task_name in keys(good_task_dict)
-#         atom_task_dict = Dict()
-#         atom_task_dict[task_name] = (good_task_dict[task_name][1], 1)
-#         accuracy = compute_task_accuracy_base(language_name, atom_task_dict)
-#         base_accuracies[language_name][task_name] = accuracy
-#     end
-# end
+function compute_task_computation_cost_base(lang_name, task_dict)
+    compute_computation_cost(lang_name, task_dict, "../..", eval_lang=false)
+end
+
+function compute_base_accuracies_and_computation_costs()
+    saved_op_vals = Dict()
+    for op_name in ["compare_op", "add_op", "subtract_op"]
+        saved_op_vals[op_name] = Dict()
+        for definition_val in ["UN", "NN", "RN"]
+            saved_op_vals[op_name][definition_val] = -1
+        end
+    end
+
+    options = ["UN", "NN", "RN"]
+    option_combos = [Iterators.product(options, options, options)...]
+    filter!(c -> !(c in [("UN", "UN", "UN"), ("RN", "RN", "RN")]), option_combos)
+
+
+    corresponding_op_and_task = Dict([
+        "arithmetic_task" => "add_op",
+        "subtraction_task" => "subtract_op",
+        "compare_task" => "compare_op",
+        "compare_task_bad" => "compare_op",
+    ])
+
+    base_accuracies = Dict()
+    base_computation_costs = Dict()
+    for language_name in language_names_pretty 
+        base_accuracies[language_name] = Dict()
+        base_computation_costs[language_name] = Dict()
+        for task_name in keys(good_task_dict)
+            atom_task_dict = Dict()
+            atom_task_dict[task_name] = (good_task_dict[task_name][1], 1)
+            
+            # compute accuracy of language on task
+            accuracy = compute_task_accuracy_base(language_name, atom_task_dict)
+            base_accuracies[language_name][task_name] = accuracy
+
+            # compute computation cost of language on task
+            ## for non-variant languages: compute from scratch
+            if !occursin("VARIANT", language_name)
+                computation_cost = compute_task_computation_cost_base(language_name, atom_task_dict)
+                if task_name in keys(corresponding_op_and_task)
+                    corresponding_op = corresponding_op_and_task[task_name]
+                    # store computation costs of operation tasks, for use in variant setting
+                    corresponding_lang_defn = language_name_to_spec[language_name][corresponding_op]
+                    if saved_op_vals[corresponding_op][corresponding_lang_defn] == -1 
+                        saved_op_vals[corresponding_op][corresponding_lang_defn] = computation_cost
+                    end
+                end
+            ## for variant languages, use previously stored values when possible; otherwise compute from scratch
+            else
+                # if the task is not operation-based, then retrieve it from base (non-variant) language
+                if !(task_name in keys(corresponding_op_and_task))
+                    base_language_name = join(split(language_name, "_")[3:end], "_")
+                    computation_cost = base_computation_costs[base_language_name][task_name]
+                
+                else # if the task is operation-based, check if it's been previously stored -- if not (i.e. NN option), compute and store it
+                    variant_num = parse(Int, split(language_name, "_")[2])
+                    combo = option_combos[variant_num]
+
+                    defn = ""
+                    if occursin("compare", task_name)
+                        defn = combo[1]
+                    elseif occursin("arithmetic", task_name)
+                        defn = combo[2]
+                    elseif occursin("subtract", task_name)
+                        defn = combo[3]
+                    else
+                        error("task_name: $(task_name)")
+                    end
+                    @show defn
+
+                    corresponding_op = corresponding_op_and_task[task_name]
+                    if saved_op_vals[corresponding_op][defn] != -1
+                        computation_cost = saved_op_vals[corresponding_op][defn]
+                    else
+                        computation_cost = compute_task_computation_cost_base(language_name, atom_task_dict)
+                        saved_op_vals[corresponding_op][defn] = computation_cost
+                    end
+
+                end
+            end
+            base_computation_costs[language_name][task_name] = computation_cost
+
+        end
+    end
+    (base_accuracies, base_computation_costs)
+end
+
+# base_accuracies, base_computation_costs = compute_base_accuracies_and_computation_costs()
 
 # PARAMS
 
@@ -810,7 +653,7 @@ relate_task_proportion = 0.0
 relate_factors = []
 all_distributions = []
 
-function run_test(test_name_, save_fig_title="")
+function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, param_effects_distance_mod = 1.0)
     global test_name = test_name_
     params_dict["test_name"] = test_name
 
@@ -829,7 +672,7 @@ function run_test(test_name_, save_fig_title="")
     # FINAL COSTS
     global memory_costs = []
     for language in language_names_pretty
-        cost = compute_representation_cost(language)
+        cost = compute_representation_cost(language, param_effects_memory_mod=param_effects_memory_mod)
         push!(memory_costs, cost)
     end
     # memory_costs[7] = 10 * memory_costs[7]
@@ -923,7 +766,7 @@ function run_test(test_name_, save_fig_title="")
     curr_distribution[1] = 1.0
     push!(all_distributions, curr_distribution)
     for t in 0:time_step_unit:num_time_steps*time_step_unit
-        next_distribution = compute_next_distribution(curr_distribution, t, 1.0)
+        next_distribution = compute_next_distribution(curr_distribution, t, 1.0, param_effects_distance_mod=param_effects_distance_mod)
 
         # forgetting/rederivation-based modification of new distribution
         next_distribution = update_dist_based_on_forgetting_and_resynthesis(next_distribution, t)
@@ -1021,7 +864,7 @@ function run_test(test_name_, save_fig_title="")
         save_fig_with_params(p, "$(test_name)_$(save_fig_title).png")
     end 
 
-    (line_plot, max_utility_plot, dist_plot, max_lot_plot, accuracy_over_time_plot, average_accuracy_over_time_plot)
+    (line_plot, maxs, max_utility_plot, dist_plot, max_lots, max_lot_plot, accuracy_over_time_plot, average_accuracy_over_time_plot)
 end
 
 plot_directory = "language/didactic/rational_number/plots"
@@ -1067,3 +910,4 @@ end
 # save_fig_with_params(p, "$(test_name)_plot.png")
 
 # plot(dist_plot, max_lot_plot, layout=(2, 1))
+

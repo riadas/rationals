@@ -1,5 +1,5 @@
 using Plots 
-
+using BenchmarkTools
 include("1_halving_doubling_physical_language.jl")
 tab = "  "
 abstract type Task end
@@ -213,6 +213,40 @@ function compute_score(lang_name, dataset, dir_prefix="")
     score / num_tasks
 end
 
+function compute_computation_cost(lang_name, dataset, dir_prefix=""; eval_lang=true)
+    num_tasks = sum(map(k -> dataset[k][2], [keys(dataset)...]))
+
+    println(lang_name)
+    if eval_lang 
+        if occursin("VARIANT", lang_name)
+            include("$(dir_prefix)/didactic/rational_number/variants/$(lang_name)")
+        else
+            include("$(dir_prefix)/$(lang_name)")
+        end
+    end
+    score = 0
+    for task_name in keys(dataset)
+        task, task_count = dataset[task_name] 
+        # println("$(tab)$(typeof(task))")
+        # if task isa ArithmeticProblem
+        #     println("$(tab)$(join(map(x -> string(x), [task.input[1], format(task.input[3]), task.input[2]]), " "))")
+        # end
+        _ = evaluate_task(task)
+        benchmark_results = @btimed evaluate_task($task) seconds=0.1 samples=10
+        # possible considerations: :time, :bytes, :alloc -- using just runtime (:time) for now
+        runtime = benchmark_results.alloc
+        # if (s isa Bool && s) || !(s isa Bool) && s == 1
+        #     println("$(tab)correct!")
+        # else
+        #     println("$(tab)incorrect!")
+        # end
+        score += runtime * task_count
+    end
+    println("$(tab)computation cost: $(score)")
+    score / num_tasks
+end
+
+
 # languages = [
 #     "1_halving_doubling_physical_language.jl",
 #     "2_halving_doubling_notation_language.jl",
@@ -276,4 +310,89 @@ end
 # ylabel!("Proportion", yguidefontsize=9)
 # title!("Relative Proportions of Rational Number / Continuous Matter LoTs", titlefontsize=10)
 
-# # p
+# p
+
+# initial and final language, individual task computation costs (normalized)
+
+# function normalize(x, max_task_val, min_task_val)
+#     (x - min_task_val) / (max_task_val - min_task_val)
+# end
+
+# language_names_pretty = language_names
+
+# ps = []
+# all_base_computation_costs = [old_base_computation_costs_memory, old_base_computation_costs_allocs]
+# for i in 1:2
+#     base_computation_costs = all_base_computation_costs[i]    
+#     L0_task_vals = map(t -> base_computation_costs[language_names_pretty[2]][t], task_names)
+#     L7_task_vals = map(t -> base_computation_costs[language_names_pretty[4]][t], task_names)
+#     all_task_vals = vcat(L0_task_vals, L7_task_vals)
+#     max_task_val = maximum(all_task_vals)
+#     min_task_val = minimum(all_task_vals)
+
+#     title = i == 1 ? "bytes" : "allocs"
+#     normalized_L0_task_vals = map(x -> normalize(x, max_task_val, min_task_val), L0_task_vals)
+#     normalized_L7_task_vals = map(x -> normalize(x, max_task_val, min_task_val), L7_task_vals)
+
+#     p1 = bar(task_names, normalized_L0_task_vals, xrotation=305, title="$(title): initial")
+#     p2 = bar(task_names, normalized_L7_task_vals, xrotation=305, title="$(title): final")
+
+#     push!(ps, p1)
+#     push!(ps, p2)
+# end
+
+# plot(ps..., layout=(2, 2), size=(1000, 1000), ylims=(0.0, 1.0), xguidefontsize=4)
+
+# function normalize(x, max_task_val, min_task_val)
+#     (x - min_task_val) / (max_task_val - min_task_val)
+# end
+
+# language_names_pretty = language_names
+
+# ps = []
+# plot_values = []
+# all_base_computation_costs = [old_base_computation_costs_memory, old_base_computation_costs_allocs]
+# for i in 1:2
+#     base_computation_costs = all_base_computation_costs[i]
+    
+#     all_task_vals = vcat(map(l -> map(t -> base_computation_costs[l][t], task_names), language_names_pretty[2:end])...)
+#     max_task_val = maximum(all_task_vals)
+#     min_task_val = minimum(all_task_vals)
+
+#     average_language_values = []
+#     for language_name in language_names_pretty[2:end] 
+#         task_vals = map(t -> base_computation_costs[language_name][t], task_names)
+#         normalized_task_vals = map(x -> normalize(x, max_task_val, min_task_val), task_vals)
+#         push!(average_language_values, mean(normalized_task_vals))
+#     end
+    
+    
+#     average_language_values = (average_language_values .- minimum(average_language_values)) ./ (maximum(average_language_values) - minimum(average_language_values))
+#     push!(plot_values, average_language_values)
+
+#     title = i == 1 ? "bytes" : "allocs"
+
+#     p = bar(language_names, average_language_values, xrotation=305, title="$(title)")
+
+#     push!(ps, p)
+# end
+
+# plot(ps..., layout=(2, 1), size=(1000, 500), ylims=(0.0, 1.0))
+
+# ##
+# costs_alloc = deepcopy(old_costs_alloc)
+# costs_memory = deepcopy(old_costs_memory)
+
+
+# costs_alloc = costs
+# indices = [4, 6, 8, 9, 10, 14]
+# scale = 1.0 # 0.05
+# for i in indices 
+#     costs_alloc[i] = scale * costs_alloc[i]
+#     costs_memory[i] = scale * costs_memory[i]
+# end
+
+# p1 = bar(language_names[2:end], (costs_alloc .- minimum(costs_alloc)) / (maximum(costs_alloc) - minimum(costs_alloc)), title="alloc")
+# p2 = bar(language_names[2:end], (costs_memory .- minimum(costs_memory)) / (maximum(costs_memory) - minimum(costs_memory)), title="bytes")
+
+# plot(p1, p2, layout=(2, 1), size=(1000, 500), ylims=(0.0, 1.0))
