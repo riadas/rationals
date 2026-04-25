@@ -4,7 +4,8 @@ curr_test_name = "good_curriculum"
 
 line_plot, maxs, max_utility_plot, dist_plot, max_lots, max_lot_plot, accuracy_over_time_plot, average_accuracy_over_time_plot = run_test(curr_test_name, "", param_effects_memory_mod=0.0, param_effects_distance_mod=1.0)
 
-p = plot(line_plot, max_utility_plot, dist_plot, max_lot_plot, average_accuracy_over_time_plot, layout=(5, 1), size=(1000, 2500))
+p = plot(dist_plot, max_lot_plot, layout=(2, 1), size=(1000, 1000))
+# p = plot(line_plot, max_utility_plot, dist_plot, max_lot_plot, average_accuracy_over_time_plot, layout=(5, 1), size=(1000, 2500))
 # save_fig_with_params(p, "$(test_name)_plot.png")
 
 savefig("$(plot_directory)/temp_$(curr_test_name).png")

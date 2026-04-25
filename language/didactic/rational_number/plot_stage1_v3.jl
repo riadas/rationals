@@ -126,38 +126,40 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0; p
         end
     end
 
+    if spec1["relate"] == "RN" && spec2["relate"] == "RN" && ((spec1["compare_op"] != "RN" && spec2["compare_op"] == "RN") || (spec1["add_op"] != "RN" && spec2["add_op"] == "RN") || (spec1["subtract_op"] != "RN" && spec2["subtract_op"] == "RN"))
+        dist = dist / 1.25
+    end
+
     if spec1["infinite_divisibility_space"] != "RN" && spec2["infinite_divisibility_space"] == "RN"
         # dist += 10
         if spec1["relate"] != "RN"
             dist += 10
-        else
-            # dist = dist / 10
         end
     end
 
     if spec1["infinite_divisibility_number"] != "RN" && spec2["infinite_divisibility_number"] == "RN"
         # dist += 10
         if spec1["relate"] != "RN"
-            dist = dist * 100
+            dist = dist * 100 # STANDARDIZE: + 10
         end
 
         if spec1["infinite_divisibility_space"] != "RN"
-            dist = dist * 1000
+            dist = dist * 1000 # STANDARDIZE: + 10
         else
-            dist = dist / 2.0
+            dist = dist - 0.975
         end
     end
 
     if spec1["infinite_divisibility_weight"] != "RN" && spec2["infinite_divisibility_weight"] == "RN"
         # dist += 10
         if spec1["relate"] != "RN"
-            dist = dist * 100
+            dist = dist * 100 # STANDARDIZE: + 10
         end
 
         if spec1["infinite_divisibility_space"] != "RN"
-            dist = dist * 1000
+            dist = dist * 1000 # STANDARDIZE: + 10
         else
-            dist = dist / 2.0
+            dist = dist - 0.975
         end
     end
 
@@ -381,7 +383,7 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
 end
 
 function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false; param_effects_distance_mod=1.0)
-    relate_factor = t * relate_task_proportion * 0.8 # 0.9
+    relate_factor = t * relate_task_proportion * 0.85 # 0.9
     relate_factor = relate_factor > 1 ? 1 : relate_factor
     push!(relate_factors, relate_factor)
     transition_probabilities, _ = plot_heatmap(relate_factor, "", spec2_taught, backwards_bool, param_effects_distance_mod=param_effects_distance_mod)
@@ -442,7 +444,7 @@ bad_task_dict = Dict([
     "subtraction_task" => (subtraction_task, 6),
     "compare_task" => (compare_task, 4),
     "compare_task_bad" => (compare_task_bad, 2),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 2),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 1),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
 ])
@@ -710,14 +712,15 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
 
     # memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
 
+    plot_colors = vcat(collect(palette(:tab10)), palette(:tab20)[12], palette(:tab20)[18], palette(:tab20)[20])
 
     global computational_costs = map(x -> 0.5, 1:length(language_names))
 
-    accuracy_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:10]), accuracies[1:10], color = collect(palette(:tab10)), xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0), xtickfontsize=6)
+    accuracy_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:13]), accuracies[1:13], color = plot_colors, xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0), xtickfontsize=6)
 
-    memory_cost_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:10]), memory_costs[1:10] ./ maximum(memory_costs[1:10]), color = collect(palette(:tab10)), xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0), xtickfontsize=6)
+    memory_cost_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:13]), memory_costs[1:13] ./ maximum(memory_costs[1:13]), color = plot_colors, xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0), xtickfontsize=6)
 
-    computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:10]), computational_costs[1:10], color = collect(palette(:tab10)), xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
+    computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:13]), computational_costs[1:13], color = plot_colors, xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
 
     plot(accuracy_plot, memory_cost_plot, computation_cost_plot, layout=(3, 1), size=(600, 525 * 3))
 
@@ -727,15 +730,15 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
     yvals_dict = Dict()
     max_yvals = 0.0
     min_yvals = 0.0
-    for i in 1:length(language_names[1:10])
+    for i in 1:length(language_names[1:13])
         y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + computational_costs[i] - 0.50), x_vals)
         max_yvals = maximum([max_yvals, maximum(y_vals)])
         min_yvals = minimum([min_yvals, minimum(y_vals)])
 
         if isnothing(line_plot)
-            line_plot = plot(x_vals, y_vals, size=(600, 450), xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)", xlabel="Cost Tolerance (Time)", ylabel="Utility")
+            line_plot = plot(x_vals, y_vals, size=(600, 450), xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = plot_colors[i], title="Utility vs. Cost Tolerance (Time)", xlabel="Cost Tolerance (Time)", ylabel="Utility")
         else
-            line_plot = plot(line_plot, x_vals, y_vals, size=(600, 450),  xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = collect(palette(:tab10))[i], title="Utility vs. Cost Tolerance (Time)",  xlabel="Cost Tolerance (Time)", ylabel="Utility")
+            line_plot = plot(line_plot, x_vals, y_vals, size=(600, 450),  xlims=(0.0, x_vals[end]), ylims=(min_yvals, max_yvals), legend=:bottomright, label=join(split(language_names_pretty[i], "_")[2:end], " "), color = plot_colors[i], title="Utility vs. Cost Tolerance (Time)",  xlabel="Cost Tolerance (Time)", ylabel="Utility")
         end
         yvals_dict[i] = y_vals
     end
@@ -743,7 +746,7 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
     max_indexes = []
     maxs = []
     for i in 1:length(x_vals) 
-        vals = map(arr -> arr[i], map(n -> yvals_dict[n], 1:length(language_names[1:10])))
+        vals = map(arr -> arr[i], map(n -> yvals_dict[n], 1:length(language_names[1:13])))
         # println(vals)
         index = findall(v -> v == maximum(vals), vals)[1]
         push!(max_indexes, index)
@@ -753,7 +756,7 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
 
     # line_plot
 
-    max_utility_plot = bar(ones(length(maxs)), color = map(i -> vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], max_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+    max_utility_plot = bar(ones(length(maxs)), color = map(i -> vcat(map(y -> plot_colors, 1:20)...)[i], max_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
 
     # plot(line_plot, max_utility_plot, layout=(2, 1), size=(600, 550))
     # line_plot
@@ -793,7 +796,7 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
 
     end
 
-    max_lot_plot = bar(ones(length(max_lots)), color = map(i -> vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], max_lot_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
+    max_lot_plot = bar(ones(length(max_lots)), color = map(i -> vcat(map(y -> plot_colors, 1:20)...)[i], max_lot_indexes), xrotation=305, size=(600, 100), legend=false, xlabel="LoT Stage", ylims=(0.0, 1.0), linecolor=:match)
 
 
     dist_plot = nothing
@@ -803,9 +806,9 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
         println(i)
         dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
         if isnothing(dist_plot)
-            dist_plot = plot(dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12, linewidth=2)
+            dist_plot = plot(dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> plot_colors, 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12, linewidth=2)
         else
-            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> collect(palette(:tab10)), 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12, linewidth=2)
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> plot_colors, 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12, linewidth=2)
         end
     end
 

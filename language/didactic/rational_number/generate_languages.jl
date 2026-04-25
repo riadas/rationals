@@ -4,7 +4,7 @@ using Plots
 using Combinatorics
 using JSON
 
-language_names = map(x -> "L$(x)", collect(1:10))
+language_names = map(x -> "L$(x)", collect(1:13))
 
 language_names_pretty = [
     "1_halving_doubling_physical_language.jl", 
@@ -16,7 +16,11 @@ language_names_pretty = [
     "7_abstract_infinite_divisibility_language.jl",
     "8_rational_arithmetic_ungrounded_language.jl",
     "9_number_infinite_divisibility_language.jl", 
-    "10_matter_infinite_divisibility_language.jl", 
+    "10_matter_infinite_divisibility_language.jl",
+    
+    "11_space_number_infinite_divisibility_language.jl",
+    "12_space_matter_infinite_divisibility_language.jl",
+    "13_number_matter_infinite_divisibility_language.jl"
 ]
 
 base_language_definition_spec = Dict([
@@ -204,9 +208,9 @@ language_name_to_definition_spec = Dict([
     "9_number_infinite_divisibility_language.jl"  => language9_definition_spec,
     "10_matter_infinite_divisibility_language.jl"  => language10_definition_spec,
 
-    # "11_matter_infinite_divisibility_language.jl"  => language11_definition_spec,
-    # "12_matter_infinite_divisibility_language.jl"  => language12_definition_spec,
-    # "13_matter_infinite_divisibility_language.jl"  => language13_definition_spec,
+    "11_space_number_infinite_divisibility_language.jl"  => language11_definition_spec,
+    "12_space_matter_infinite_divisibility_language.jl"  => language12_definition_spec,
+    "13_number_matter_infinite_divisibility_language.jl"  => language13_definition_spec,
 ])
 
 language_name_to_spec = Dict([
@@ -221,9 +225,9 @@ language_name_to_spec = Dict([
     "9_number_infinite_divisibility_language.jl"  => language9_spec,
     "10_matter_infinite_divisibility_language.jl"  => language10_spec,
 
-    # "11_matter_infinite_divisibility_language.jl"  => language11_spec,
-    # "12_matter_infinite_divisibility_language.jl"  => language12_spec,
-    # "13_matter_infinite_divisibility_language.jl"  => language13_spec,
+    "11_space_number_infinite_divisibility_language.jl"  => language11_spec,
+    "12_space_matter_infinite_divisibility_language.jl"  => language12_spec,
+    "13_number_matter_infinite_divisibility_language.jl"  => language13_spec,
 ])
 
 
