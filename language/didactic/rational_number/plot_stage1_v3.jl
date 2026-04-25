@@ -100,68 +100,72 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0; p
     dist = 0
     spec2_lower_at_least_once = false
     for k in keys(spec1)
-        if spec1[k] != spec2[k]
-            # dist += 1
+        if spec1[k] != spec2[k] && !(k in ["weight", "density"])
             if spec1[k] == "RN" || spec2[k] == "RN"
                 if occursin("_op", k)
-                    dist += 2.0 # 1.6
+                    dist += 2.0 # operation semantics are harder to learn because longer DL
                 else
-                    dist += 1
+                    dist += 1.0
                 end
-            else
+            else # natural number intrusions are easier to learn
                 dist += 0.5
             end
 
-            if spec1[k] == "RN" && spec2[k] in ["NN", "UN"] # || spec1[k] == "NN" && spec2[k] == "UN"
+            if spec1[k] == "RN" && spec2[k] in ["NN", "UN"]
                 spec2_lower_at_least_once = true # spec1 is lower at least once
             end
         end
     end
 
+
     if spec1["relate"] != "RN" && spec2["relate"] == "RN"
         if foldl(&, map(x -> spec1[x] == "RN", ["halve1", "halve2", "halve3", "double", "divide1", "divide2", "divide3", "multiply"]), init=true)
-            dist += 20 - 19 * relate_factor # 200 - 199 * relate_factor
+            dist += 20 - 19 * relate_factor
         else
-            dist = dist * 10 * param_effects_distance_mod # * 100
+            dist = dist * 10 * param_effects_distance_mod
         end
     end
 
+    missing_structure_param = 10
+    structure_param = 0.2
+
+    # easier to grasp fraction operations after symbolic-physical analogy discovered
     if spec1["relate"] == "RN" && spec2["relate"] == "RN" && ((spec1["compare_op"] != "RN" && spec2["compare_op"] == "RN") || (spec1["add_op"] != "RN" && spec2["add_op"] == "RN") || (spec1["subtract_op"] != "RN" && spec2["subtract_op"] == "RN"))
-        dist = dist / 1.25
+        dist = dist / (1 + structure_param)
     end
 
+    # --- INFINITE DIVISIBILITY: CO-CONSTRUCTION ---
+    # easier to grasp infinite divisibility of space after symbolic-physical analogy discovered
     if spec1["infinite_divisibility_space"] != "RN" && spec2["infinite_divisibility_space"] == "RN"
-        # dist += 10
         if spec1["relate"] != "RN"
-            dist += 10
-        end
-    end
-
-    if spec1["infinite_divisibility_number"] != "RN" && spec2["infinite_divisibility_number"] == "RN"
-        # dist += 10
-        if spec1["relate"] != "RN"
-            dist = dist * 100 # STANDARDIZE: + 10
-        end
-
-        if spec1["infinite_divisibility_space"] != "RN"
-            dist = dist * 1000 # STANDARDIZE: + 10
+            dist += missing_structure_param
         else
-            dist = dist - 0.975
+            # hard to understand all the infinite divisibilities at once; space is the gateway
+            if spec2["infinite_divisibility_number"] != "RN" && spec2["infinite_divisibility_weight"] != "RN"
+                dist -= structure_param * 1.5 # space only
+            else
+                dist += missing_structure_param # space simultaneously with number, matter
+            end
         end
     end
 
-    if spec1["infinite_divisibility_weight"] != "RN" && spec2["infinite_divisibility_weight"] == "RN"
-        # dist += 10
-        if spec1["relate"] != "RN"
-            dist = dist * 100 # STANDARDIZE: + 10
-        end
+    # easier to grasp infinite divisibility of number, matter (invisible) after space (visible) 
+    for pair in [("number", "weight"), ("weight", "number")]
+        domain1, domain2 = pair
+        if spec1["infinite_divisibility_$(domain1)"] != "RN" && spec2["infinite_divisibility_$(domain1)"] == "RN"
+            if spec1["relate"] != "RN"
+                dist += missing_structure_param
+            end
 
-        if spec1["infinite_divisibility_space"] != "RN"
-            dist = dist * 1000 # STANDARDIZE: + 10
-        else
-            dist = dist - 0.975
+            if spec1["infinite_divisibility_space"] != "RN"
+                dist += missing_structure_param
+            else
+                if spec1["infinite_divisibility_$(domain2)"] == "RN" && spec2["infinite_divisibility_$(domain2)"] == "RN"
+                    dist -= (1 - structure_param)
+                end
+            end
         end
-    end
+    end    
 
     s = 0
     if dist != 0 
@@ -170,11 +174,6 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0; p
         else
             s = -1 
         end
-        # if count(x -> x == "RN", collect(values(spec1))) > count(x -> x == "RN", collect(values(spec2)))
-        #     s = 1 
-        # else
-        #     s = -1
-        # end
     end
 
     dist = dist * instruction_bias_base^(1 - spec2_taught)
@@ -298,7 +297,7 @@ function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instru
     # @show distribution[8]
     # @show distribution[end]
     new_distribution = distribution
-    new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # FORGETTING AND RESYNTHESIS FINAL
+    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # FORGETTING AND RESYNTHESIS FINAL
     # @show new_distribution[8]
     # @show new_distribution[end]
     # # forgetting step: option B
@@ -357,7 +356,7 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
             l2 = language_names_pretty[j]
             l1_spec = language_name_to_spec[l1]
             l2_spec = language_name_to_spec[l2]
-            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, j < 11 ? spec2_taught : 0.0, param_effects_distance_mod=param_effects_distance_mod)
+            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, j < 14 ? spec2_taught : 0.0, param_effects_distance_mod=param_effects_distance_mod)
             if dist == 0
                 transition_prob = transition_prob_identity
             else
@@ -427,7 +426,7 @@ good_task_dict = Dict([
     "subtraction_task" => (subtraction_task, 6),
     "compare_task" => (compare_task, 4),
     "compare_task_bad" => (compare_task_bad, 2),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 1),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 2),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
 ])
@@ -444,7 +443,7 @@ bad_task_dict = Dict([
     "subtraction_task" => (subtraction_task, 6),
     "compare_task" => (compare_task, 4),
     "compare_task_bad" => (compare_task_bad, 2),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 1),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 2),
     "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
     "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
 ])
@@ -617,7 +616,7 @@ utility_base = 9.0 # 10000.0
 transition_prob_identity_base = 0.99
 transition_prob_identity_rate = 0.0003
 transition_prob_base = 2 # 100.0 2
-instruction_bias_base = 100.0
+instruction_bias_base = 10.0
 
 # forgetting params (under forgetting model variant 1)
 pre_relate_mistake_prob_max = 0.4
