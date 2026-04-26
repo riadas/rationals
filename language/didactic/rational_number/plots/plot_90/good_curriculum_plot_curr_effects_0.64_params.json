@@ -1,0 +1,32 @@
+{
+    "pre_relate_mistake_prob_min": 0.3,
+    "pre_relate_mistake_prob_max": 0.4,
+    "instruction_bias_base": 10.0,
+    "transition_prob_identity_rate": 0.0003,
+    "num_time_steps": 1000,
+    "gamma_c": 2.0,
+    "test_name": "good_curriculum",
+    "time_step_unit": 0.01,
+    "cost_c": 0.1,
+    "post_relate_mistake_prob_max": 0.05,
+    "transition_prob_base": 2.0,
+    "utility_base": 9.0,
+    "transition_prob_identity_base": 0.99,
+    "post_relate_mistake_prob_min": 0.01,
+    "forgetting_model_variant": 2,
+    "curriculum": {
+        "compare_task": 5.12,
+        "subtraction_task": 4.32,
+        "halve_task": 10.0,
+        "is_a_number_task": 23.04,
+        "combine_task": 5.0,
+        "get_to_zero_weight_task": 1.0,
+        "compare_task_bad": 2.56,
+        "divide_task": 5.0,
+        "get_to_zero_rationals_task": 1.0,
+        "double_task": 10.0,
+        "split_task": 5.0,
+        "arithmetic_task": 4.32,
+        "get_to_zero_space_task": 2.0
+    }
+}

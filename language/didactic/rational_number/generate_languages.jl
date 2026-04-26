@@ -20,7 +20,16 @@ language_names_pretty = [
     
     "11_space_number_infinite_divisibility_language.jl",
     "12_space_matter_infinite_divisibility_language.jl",
-    "13_number_matter_infinite_divisibility_language.jl"
+    "13_number_matter_infinite_divisibility_language.jl",
+
+    "14_space_infinite_divisibility_no_arith_language.jl", 
+    "15_abstract_infinite_divisibility_no_arith_language.jl",
+    "16_number_infinite_divisibility_no_arith_language.jl",
+    "17_matter_infinite_divisibility_no_arith_language.jl",
+
+    "18_space_number_infinite_divisibility_no_arith_language.jl",
+    "19_space_matter_infinite_divisibility_no_arith_language.jl",
+    "20_number_matter_infinite_divisibility_no_arith_language.jl",
 ]
 
 base_language_definition_spec = Dict([
@@ -196,6 +205,63 @@ language13_spec["infinite_divisibility_number"] = true
 language13_definition_spec["infinite_divisibility_weight"] = "infinite"
 language13_spec["infinite_divisibility_weight"] = true
 
+# NEW 4/26:
+
+# space
+language14_definition_spec = deepcopy(language4_definition_spec)
+language14_spec = deepcopy(language4_spec)
+language14_definition_spec["infinite_divisibility_space"] = "infinite"
+language14_spec["infinite_divisibility_space"] = true
+
+# space, number, matter
+language15_definition_spec = deepcopy(base_language_definition_spec)
+language15_spec = deepcopy(base_language_spec)
+
+# number
+language16_definition_spec = deepcopy(language4_definition_spec)
+language16_spec = deepcopy(language4_spec)
+
+language16_definition_spec["infinite_divisibility_number"] = "infinite"
+language16_spec["infinite_divisibility_number"] = true
+
+# matter
+language17_definition_spec = deepcopy(language4_definition_spec)
+language17_spec = deepcopy(language4_spec)
+
+language17_definition_spec["infinite_divisibility_weight"] = "infinite"
+language17_spec["infinite_divisibility_weight"] = true
+
+
+## space, number
+language18_definition_spec = deepcopy(language4_definition_spec)
+language18_spec = deepcopy(language4_spec)
+
+language18_definition_spec["infinite_divisibility_space"] = "infinite"
+language18_spec["infinite_divisibility_space"] = true
+
+language18_definition_spec["infinite_divisibility_number"] = "infinite"
+language18_spec["infinite_divisibility_number"] = true
+
+## space, matter
+language19_definition_spec = deepcopy(language4_definition_spec)
+language19_spec = deepcopy(language4_spec)
+
+language19_definition_spec["infinite_divisibility_space"] = "infinite"
+language19_spec["infinite_divisibility_space"] = true
+
+language19_definition_spec["infinite_divisibility_weight"] = "infinite"
+language19_spec["infinite_divisibility_weight"] = true
+
+# number, matter
+language20_definition_spec = deepcopy(language4_definition_spec)
+language20_spec = deepcopy(language4_spec)
+
+language20_definition_spec["infinite_divisibility_number"] = "infinite"
+language20_spec["infinite_divisibility_number"] = true
+
+language20_definition_spec["infinite_divisibility_weight"] = "infinite"
+language20_spec["infinite_divisibility_weight"] = true
+
 language_name_to_definition_spec = Dict([
     "1_halving_doubling_physical_language.jl" => language1_definition_spec, 
     "2_halving_doubling_notation_language.jl" => language2_definition_spec, 
@@ -211,6 +277,15 @@ language_name_to_definition_spec = Dict([
     "11_space_number_infinite_divisibility_language.jl"  => language11_definition_spec,
     "12_space_matter_infinite_divisibility_language.jl"  => language12_definition_spec,
     "13_number_matter_infinite_divisibility_language.jl"  => language13_definition_spec,
+
+    "14_space_infinite_divisibility_no_arith_language.jl" => language14_definition_spec, 
+    "15_abstract_infinite_divisibility_no_arith_language.jl"  => language15_definition_spec,
+    "16_number_infinite_divisibility_no_arith_language.jl"  => language16_definition_spec,
+    "17_matter_infinite_divisibility_no_arith_language.jl"  => language17_definition_spec,
+
+    "18_space_number_infinite_divisibility_no_arith_language.jl"  => language18_definition_spec,
+    "19_space_matter_infinite_divisibility_no_arith_language.jl"  => language19_definition_spec,
+    "20_number_matter_infinite_divisibility_no_arith_language.jl"  => language20_definition_spec,
 ])
 
 language_name_to_spec = Dict([
@@ -228,6 +303,15 @@ language_name_to_spec = Dict([
     "11_space_number_infinite_divisibility_language.jl"  => language11_spec,
     "12_space_matter_infinite_divisibility_language.jl"  => language12_spec,
     "13_number_matter_infinite_divisibility_language.jl"  => language13_spec,
+
+    "14_space_infinite_divisibility_no_arith_language.jl" => language14_spec, 
+    "15_abstract_infinite_divisibility_no_arith_language.jl"  => language15_spec,
+    "16_number_infinite_divisibility_no_arith_language.jl"  => language16_spec,
+    "17_matter_infinite_divisibility_no_arith_language.jl"  => language17_spec,
+
+    "18_space_number_infinite_divisibility_no_arith_language.jl"  => language18_spec,
+    "19_space_matter_infinite_divisibility_no_arith_language.jl"  => language19_spec,
+    "20_number_matter_infinite_divisibility_no_arith_language.jl"  => language20_spec,
 ])
 
 

@@ -1,4 +1,4 @@
-include("../../macro_compression/compiler_variant.jl")
+# include("../../macro_compression/compiler_variant.jl")
 
 # COST COMPUTATION
 function compute_complexity_cost(language)
@@ -100,6 +100,8 @@ end
 function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0; param_effects_distance_mod=1.0)
     dist = 0
     spec2_lower_at_least_once = false
+    
+    # compute base edit distance (between specs)
     for k in keys(spec1)
         if spec1[k] != spec2[k] && !(k in ["weight", "density"])
             if spec1[k] == "RN" || spec2[k] == "RN"
@@ -131,7 +133,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0; p
 
     # easier to grasp fraction operations after symbolic-physical analogy discovered
     if spec1["relate"] == "RN" && spec2["relate"] == "RN" && ((spec1["compare_op"] != "RN" && spec2["compare_op"] == "RN") || (spec1["add_op"] != "RN" && spec2["add_op"] == "RN") || (spec1["subtract_op"] != "RN" && spec2["subtract_op"] == "RN"))
-        dist = dist / (1 + structure_param)
+        dist = dist / (1 + structure_param * 1.5)
     end
 
     # --- INFINITE DIVISIBILITY: CO-CONSTRUCTION ---
@@ -142,7 +144,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0; p
         else
             # hard to understand all the infinite divisibilities at once; space is the gateway
             if spec2["infinite_divisibility_number"] != "RN" && spec2["infinite_divisibility_weight"] != "RN"
-                dist -= structure_param * 1.75 # space only
+                dist -= structure_param * 1.35 # space only
             else
                 dist += missing_structure_param # space simultaneously with number, matter
             end
@@ -180,51 +182,6 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0; p
 
     (dist, s)
 end
-
-"""
-                function_names = ["compare_op", "add_op", "subtract_op"]
-                forgetting_possibility_indices = []
-                for i in 1:length(function_names)
-                    if lang_spec[function_names[i]] == "RN"
-                        push!(forgetting_possibility_indices, i)
-                    end
-                end
-                possible_combos = filter(x -> x != [], [combinations(forgetting_possibility_indices)...])
-                forgetting_prob = 0.1 * (pre_relate_mistake_prob_max - (t / (num_time_steps * time_step_unit)) * (pre_relate_mistake_prob_max - pre_relate_mistake_prob_min))
-
-                # individual_prob_ratios = map(x -> length(x) * (0.5)^(length(x)), possible_combos)
-                individual_prob_ratios = ones(length(possible_combos)) 
-                # if rederive_bool 
-                #     individual_prob_ratios = map(i -> individual_prob_ratios[i] * (0.5)^(length(function_names) - length(possible_combos[i])), 1:length(possible_combos))
-                # end
-                individual_prob_ratios = (individual_prob_ratios ./ sum(individual_prob_ratios)) .* forgetting_prob
-
-                for i in 1:length(possible_combos)
-                    combo = possible_combos[i]
-                    # individual_function_forgetting_prob = individual_prob_ratios[i]
-                    # individual_function_forgetting_prob = forgetting_prob / length(possible_combos) 
-                    # if individual_function_forgetting_prob != forgetting_prob / length(possible_combos) 
-                    #     println("whattt")
-                    #     println(possible_combos)
-                    #     println(individual_function_forgetting_prob)
-                    #     println(forgetting_prob / length(possible_combos) )
-                    # end
-                    individual_function_forgetting_prob = forgetting_prob / length(possible_combos)
-                    if rederive_bool 
-                        no_rederiv_factor = (0.5)^(length(function_names) - length(combo)) # (0.05)^(length(function_names) - length(combo))
-                    else
-                        no_rederiv_factor = 1.0
-                    end
-                    individual_function_forgetting_prob = individual_function_forgetting_prob * no_rederiv_factor
-                    new_spec = deepcopy(lang_spec)
-                    for i in combo 
-                        new_spec[function_names[i]] = "NN"
-                    end
-                    new_lang_name = find_lang_name_with_spec(new_spec)
-                    new_lang_name_idx = findall(x -> x == new_lang_name, language_names_pretty)[1]
-                    
-                    new_distribution[new_lang_name_idx] += distribution[i] * individual_function_forgetting_prob
-"""
 
 function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, rederive_bool=true)
     new_distribution = deepcopy(distribution)
@@ -264,20 +221,6 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
                     
                     new_distribution[new_lang_name_idx] += distribution[i] * individual_function_forgetting_prob
                 end
-                # arr = filter(x -> x > 1, new_distribution)
-                # if arr != []
-                #     println("OOPS")
-                #     println(arr)
-                #     println(sum(new_distribution))
-                #         println(findall(x -> x > 1, new_distribution))
-                # end
-
-                # arr = filter(x -> x < 0, new_distribution)
-                # if arr != []
-                #     println("OOPS 2 BELOW ZERO")
-                #     println(arr)
-                #     println(findall(x -> x < 0, new_distribution))
-                # end
 
                 new_distribution[i] = distribution[i] * (1 - (forgetting_prob / length(possible_combos)) * sum(rederiv_factors))
             end
@@ -288,44 +231,13 @@ function forget_and_resynthesize_helper(distribution, t, instruction_bias=0.0, r
     new_distribution # TODO: use instruction_bias
 end
 
-function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instruction_bias=0.0)
-    # VERSON 1: redistribute weight without proposal 
-    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false)
-    
-    # VERSION 2: redistribute weight with proposal
-    # # forgetting step: option A
-    # @show distribution[8]
-    # @show distribution[end]
+function update_dist_based_on_forgetting_and_resynthesis(distribution, t, instruction_bias=0.0; forget=false)
     new_distribution = distribution
-    # new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # FORGETTING AND RESYNTHESIS FINAL
-    # @show new_distribution[8]
-    # @show new_distribution[end]
-    # # forgetting step: option B
-    # new_distribution = compute_next_distribution(distribution, t, 0.0, true)
-    
-    # # rederivation step 
-    # new_distribution = compute_next_distribution(new_distribution, t, 0.0, true) # false
-    # new_distribution
-
-    # arr = filter(x -> x > 1, new_distribution)
-    # if arr != []
-    #     println("2 OOPS")
-    #     println(arr)
-    #     println(sum(new_distribution))
-    #         println(findall(x -> x > 1, new_distribution))
-    # end
-
-    # arr = filter(x -> x < 0, new_distribution)
-    # if arr != []
-    #     println("2 OOPS 2 BELOW ZERO")
-    #     println(arr)
-    #     println(findall(x -> x < 0, new_distribution))
-    # end
+    if forget 
+        new_distribution = forget_and_resynthesize_helper(distribution, t, instruction_bias, false) # FORGETTING AND RESYNTHESIS FINAL
+    end
     
     new_distribution 
-
-    # VERSON 0: null
-    # distribution # CURRENTLY RUNNING THIS VERSION
 end
 
 function find_lang_name_with_spec(spec)
@@ -356,7 +268,7 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
             l2 = language_names_pretty[j]
             l1_spec = language_name_to_spec[l1]
             l2_spec = language_name_to_spec[l2]
-            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, j < 14 ? spec2_taught : 0.0, param_effects_distance_mod=param_effects_distance_mod)
+            dist, s = distance_between_specs(l1_spec, l2_spec, relate_factor, j < 21 ? spec2_taught : 0.0, param_effects_distance_mod=param_effects_distance_mod)
             if dist == 0
                 transition_prob = transition_prob_identity
             else
@@ -382,7 +294,7 @@ function plot_heatmap(relate_factor, title="", spec2_taught=1.0, backwards_bool=
 end
 
 function compute_next_distribution(curr_distribution, t, spec2_taught=1.0, backwards_bool=false; param_effects_distance_mod=1.0)
-    relate_factor = t * relate_task_proportion * 0.85 # 0.9
+    relate_factor = t * relate_task_proportion * 0.85 # 0.85
     relate_factor = relate_factor > 1 ? 1 : relate_factor
     push!(relate_factors, relate_factor)
     transition_probabilities, _ = plot_heatmap(relate_factor, "", spec2_taught, backwards_bool, param_effects_distance_mod=param_effects_distance_mod)
@@ -416,36 +328,36 @@ end
 # # BASE ACCURACY COMPUTATION
 # good curriculum
 good_task_dict = Dict([
-    "halve_task" => (halve_task, 10),
-    "double_task" => (double_task, 10),
-    "split_task" => (split_task, 5),
-    "combine_task" => (combine_task, 5),
-    "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 18), # 15 vs. 0 MODIFY
-    "arithmetic_task" => (arithmetic_task, 6), # MODIFY
-    "subtraction_task" => (subtraction_task, 6),
-    "compare_task" => (compare_task, 4),
-    "compare_task_bad" => (compare_task_bad, 2),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 2),
-    "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
-    "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
+    "halve_task" => (halve_task, 10.0),
+    "double_task" => (double_task, 10.0),
+    "split_task" => (split_task, 5.0),
+    "combine_task" => (combine_task, 5.0),
+    "divide_task" => (divide_task, 5.0),
+    "is_a_number_task" => (is_a_number_task, 18.0), # 15 vs. 0 MODIFY
+    "arithmetic_task" => (arithmetic_task, 6.0), # MODIFY
+    "subtraction_task" => (subtraction_task, 6.0),
+    "compare_task" => (compare_task, 4.0),
+    "compare_task_bad" => (compare_task_bad, 2.0),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 2.0),
+    "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1.0),
+    "get_to_zero_weight_task" => (get_to_zero_weight_task, 1.0),
 ])
 
 # bad curriculum
 bad_task_dict = Dict([
-    "halve_task" => (halve_task, 10),
-    "double_task" => (double_task, 10),
-    "split_task" => (split_task, 5),
-    "combine_task" => (combine_task, 5),
-    "divide_task" => (divide_task, 5),
-    "is_a_number_task" => (is_a_number_task, 1), # 15 vs. 0 MODIFY
-    "arithmetic_task" => (arithmetic_task, 6), # MODIFY
-    "subtraction_task" => (subtraction_task, 6),
-    "compare_task" => (compare_task, 4),
-    "compare_task_bad" => (compare_task_bad, 2),
-    "get_to_zero_space_task" => (get_to_zero_space_task, 2),
-    "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1),
-    "get_to_zero_weight_task" => (get_to_zero_weight_task, 1),
+    "halve_task" => (halve_task, 10.0),
+    "double_task" => (double_task, 10.0),
+    "split_task" => (split_task, 5.0),
+    "combine_task" => (combine_task, 5.0),
+    "divide_task" => (divide_task, 5.0),
+    "is_a_number_task" => (is_a_number_task, 1.0), # 15 vs. 0 MODIFY
+    "arithmetic_task" => (arithmetic_task, 6.0), # MODIFY
+    "subtraction_task" => (subtraction_task, 6.0),
+    "compare_task" => (compare_task, 4.0),
+    "compare_task_bad" => (compare_task_bad, 2.0),
+    "get_to_zero_space_task" => (get_to_zero_space_task, 2.0),
+    "get_to_zero_rationals_task" => (get_to_zero_rationals_task, 1.0),
+    "get_to_zero_weight_task" => (get_to_zero_weight_task, 1.0),
 ])
 test_name_to_task_dict = Dict(["good_curriculum" => good_task_dict, "bad_curriculum" => bad_task_dict])
 
@@ -608,14 +520,14 @@ num_time_steps = 1000 # 6000 # 5500 # 3000
 
 # utility function params 
 gamma_c = 2.0
-cost_c = 0.03
+cost_c = 0.1
 utility_base = 9.0 # 10000.0
 # gamma_c*t*accuracies[language_index] - cost_c *(memory_costs[language_index] + computational_costs[language_index] - 0.50)
 
 # transition probability params
 transition_prob_identity_base = 0.99
 transition_prob_identity_rate = 0.0003
-transition_prob_base = 2 # 100.0 2
+transition_prob_base = 2.0 # 100.0 2
 instruction_bias_base = 10.0
 
 # forgetting params (under forgetting model variant 1)
@@ -654,7 +566,7 @@ relate_task_proportion = 0.0
 relate_factors = []
 all_distributions = []
 
-function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, param_effects_distance_mod = 1.0)
+function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, param_effects_distance_mod = 1.0, forget=false)
     global test_name = test_name_
     params_dict["test_name"] = test_name
 
@@ -675,16 +587,22 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
     global memory_costs = compute_representation_costs(param_effects_memory_mod=param_effects_memory_mod, compiler_based=true, infinite_scale=50.0)
     memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
 
-    plot_colors = vcat(collect(palette(:tab10)), palette(:tab20)[12], palette(:tab20)[18], palette(:tab20)[20])
+    plot_colors = vcat(
+        collect(palette(:tab10)), 
+        palette(:tab20)[12], 
+        palette(:tab20)[18], 
+        palette(:tab20)[20],
+        palette(:tab20b)[1:7]...,
+    )
 
     # global computational_costs = map(x -> 0.5, 1:length(language_names))
     global computational_costs = compute_computation_costs(base_computation_costs)
 
-    accuracy_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:13]), accuracies[1:13], color = plot_colors, xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0), xtickfontsize=6)
+    accuracy_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:20]), accuracies[1:20], color = plot_colors, xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0), xtickfontsize=6)
 
-    memory_cost_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:13]), memory_costs[1:13] ./ maximum(memory_costs[1:13]), color = plot_colors, xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0), xtickfontsize=6)
+    memory_cost_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:20]), memory_costs[1:20] ./ maximum(memory_costs[1:20]), color = plot_colors, xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Memory Cost", ylims=(0.0, 1.0), xtickfontsize=6)
 
-    computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:13]), computational_costs[1:13], color = plot_colors, xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
+    computation_cost_plot = bar(map(x -> join(split(x, "_")[2:end], " "), language_names_pretty[1:20]), computational_costs[1:20], color = plot_colors, xrotation=305, size=(600, 525), legend=false, xlabel="LoT Stage", ylabel="Cost", title="Computation Cost", ylims=(0.0, 1.0))
 
     plot(accuracy_plot, memory_cost_plot, computation_cost_plot, layout=(3, 1), size=(600, 525 * 3))
 
@@ -694,7 +612,7 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
     yvals_dict = Dict()
     max_yvals = 0.0
     min_yvals = 0.0
-    for i in 1:length(language_names[1:13])
+    for i in 1:length(language_names[1:20])
         y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + 0.1 * (computational_costs[i] - 0.50)), x_vals)
         max_yvals = maximum([max_yvals, maximum(y_vals)])
         min_yvals = minimum([min_yvals, minimum(y_vals)])
@@ -710,7 +628,7 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
     max_indexes = []
     maxs = []
     for i in 1:length(x_vals) 
-        vals = map(arr -> arr[i], map(n -> yvals_dict[n], 1:length(language_names[1:13])))
+        vals = map(arr -> arr[i], map(n -> yvals_dict[n], 1:length(language_names[1:20])))
         # println(vals)
         index = findall(v -> v == maximum(vals), vals)[1]
         push!(max_indexes, index)
@@ -736,7 +654,7 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
         next_distribution = compute_next_distribution(curr_distribution, t, 1.0, param_effects_distance_mod=param_effects_distance_mod)
 
         # forgetting/rederivation-based modification of new distribution
-        next_distribution = update_dist_based_on_forgetting_and_resynthesis(next_distribution, t)
+        next_distribution = update_dist_based_on_forgetting_and_resynthesis(next_distribution, t, forget=forget)
         # println(length(next_distribution))
         # println(maximum(next_distribution))
         # @show next_distribution
@@ -770,9 +688,9 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
         println(i)
         dist_ys = map(t -> all_distributions[t][i], 1:length(dist_xs))
         if isnothing(dist_plot)
-            dist_plot = plot(dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> plot_colors, 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12, linewidth=2)
+            dist_plot = plot(dist_xs, dist_ys, label= (i < 21) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> plot_colors, 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12, linewidth=2)
         else
-            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 11) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> plot_colors, 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12, linewidth=2)
+            dist_plot = plot(dist_plot, dist_xs, dist_ys, label= (i < 21) ? replace(language_names_pretty[i], "_language.jl" => "") : "", legend=:right, color = vcat(map(y -> plot_colors, 1:20)...)[i], size=(800, 600), title="Posterior over LoTs (Background Proposal x Utility-Based Acceptor)", ylabel="Probability", xlabel="Time", legendfontsize=5, titlefontsize=12, linewidth=2)
         end
     end
 
