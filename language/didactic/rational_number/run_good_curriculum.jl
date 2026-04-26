@@ -1,4 +1,4 @@
-include("plot_stage1_v3.jl")
+include("plot_stage1_v4.jl")
 
 curr_test_name = "good_curriculum"
 

@@ -1,5 +1,5 @@
 include("utils.jl")
-# include("../didactic/rational_number/generate_languages.jl")
+include("../didactic/rational_number/generate_languages.jl")
 
 abstract type Rule end
 abstract type Element end
@@ -855,9 +855,6 @@ end
 # println("\nSECONDARY COMPRESSED STRING")
 # println(secondary_compressed_str)
 
-
-# TODO: what to do about NN_op / RN_op translation function
-
 base_language_names = sort(readdir("language/macro_compression/compressed"), by = x -> parse(Int, split(x, "_")[1]))
 language_index_to_knower_rules = Dict([
     1 => [],
@@ -870,10 +867,12 @@ language_index_to_knower_rules = Dict([
     8 => pre_knower_rules,
     9 => post_knower_rules, 
     10 => post_knower_rules,
+    11 => post_knower_rules,
+    12 => post_knower_rules,
+    13 => post_knower_rules,
 ])
 
-
-for i in 11:length(language_names_pretty)
+for i in 14:length(language_names_pretty)
     language_name = language_names_pretty[i]
     if occursin("8_rational_arithmetic_ungrounded_language", language_name)
         language_index_to_knower_rules[i] = pre_knower_rules
@@ -882,127 +881,72 @@ for i in 11:length(language_names_pretty)
     end
 end
 
-language_name_to_type_system = Dict()
-for i in 1:length(base_language_names)
-    language_name = base_language_names[i]
-    rules = language_index_to_knower_rules[i]
+# language_name_to_type_system = Dict()
+# for i in 1:length(base_language_names)
+#     language_name = base_language_names[i]
+#     rules = language_index_to_knower_rules[i]
 
-    println("LANGUAGE NAME: $(language_name)")
+#     println("LANGUAGE NAME: $(language_name)")
     
-    global lang_str = ""
-    open("language/macro_compression/compressed/$(language_name)", "r") do f 
-        global lang_str = read(f, String)
-    end
-    println("\nCOMPRESSED STRING\n")
-    println(lang_str)
+#     global lang_str = ""
+#     open("language/macro_compression/compressed/$(language_name)", "r") do f 
+#         global lang_str = read(f, String)
+#     end
+#     println("\nCOMPRESSED STRING\n")
+#     println(lang_str)
 
-    expanded_lang_str = expand(lang_str)
-    println("\nEXPANDED STRING")
-    println(expanded_lang_str)
+#     expanded_lang_str = expand(lang_str)
+#     println("\nEXPANDED STRING")
+#     println(expanded_lang_str)
 
-    primary_compressed_str = primary_compression(expanded_lang_str, rules)
-    println("\nPRIMARY COMPRESSED STRING")
-    println(primary_compressed_str)
+#     primary_compressed_str = primary_compression(expanded_lang_str, rules)
+#     println("\nPRIMARY COMPRESSED STRING")
+#     println(primary_compressed_str)
 
-    secondary_compressed_str = secondary_compression(primary_compressed_str, rules)
-    println("\nSECONDARY COMPRESSED STRING")
-    println(secondary_compressed_str)
+#     secondary_compressed_str = secondary_compression(primary_compressed_str, rules)
+#     println("\nSECONDARY COMPRESSED STRING")
+#     println(secondary_compressed_str)
 
-    language_name_to_type_system[language_name] = (secondary_compressed_str, primary_compressed_str, expanded_lang_str)
-end
+#     language_name_to_type_system[language_name] = (secondary_compressed_str, primary_compressed_str, expanded_lang_str)
+# end
 
-language_name_to_type_system_via_spec = Dict()
-for i in 1:length(base_language_names)
-    rules = language_index_to_knower_rules[i]
-    language_name_ = base_language_names[i] 
-    language_name = replace(language_name_, "_compressed.jl" => ".jl")
-    spec = language_name_to_definition_spec[language_name]
-    intermediate_rDSL_lang = translate_spec_to_type_system(spec)
+# language_name_to_type_system_via_spec = Dict()
+# for i in 1:length(base_language_names)
+#     rules = language_index_to_knower_rules[i]
+#     language_name_ = base_language_names[i] 
+#     language_name = replace(language_name_, "_compressed.jl" => ".jl")
+#     spec = language_name_to_definition_spec[language_name]
+#     intermediate_rDSL_lang = translate_spec_to_type_system(spec)
     
 
-    println("LANGUAGE NAME: $(language_name)")
-    println("\nSTART STRING\n")
-    println(intermediate_rDSL_lang)
+#     println("LANGUAGE NAME: $(language_name)")
+#     println("\nSTART STRING\n")
+#     println(intermediate_rDSL_lang)
 
 
-    secondary_compressed_str = secondary_compression(intermediate_rDSL_lang, rules)
-    println("\nSECONDARY COMPRESSED STRING")
-    println(secondary_compressed_str)
+#     secondary_compressed_str = secondary_compression(intermediate_rDSL_lang, rules)
+#     println("\nSECONDARY COMPRESSED STRING")
+#     println(secondary_compressed_str)
 
-    expanded_lang_str = expand(lang_str)
-    println("\nEXPANDED STRING")
-    println(expanded_lang_str)
+#     expanded_lang_str = expand(lang_str)
+#     println("\nEXPANDED STRING")
+#     println(expanded_lang_str)
 
-    primary_compressed_str = primary_compression(expanded_lang_str, rules)
-    println("\nPRIMARY COMPRESSED STRING")
-    println(primary_compressed_str)
+#     primary_compressed_str = primary_compression(expanded_lang_str, rules)
+#     println("\nPRIMARY COMPRESSED STRING")
+#     println(primary_compressed_str)
 
-    secondary_compressed_str = secondary_compression(primary_compressed_str, rules)
-    println("\nSECONDARY COMPRESSED STRING")
-    println(secondary_compressed_str)
+#     secondary_compressed_str = secondary_compression(primary_compressed_str, rules)
+#     println("\nSECONDARY COMPRESSED STRING")
+#     println(secondary_compressed_str)
 
-   language_name_to_type_system_via_spec[language_name] = (secondary_compressed_str, primary_compressed_str, expanded_lang_str) 
-end
-
-language_name_to_type_system_via_spec = Dict()
-for i in 1:length(language_names_pretty)
-    rules = language_index_to_knower_rules[i]
-    language_name = language_names_pretty[i]
-    # language_name = replace(language_name_, "_compressed.jl" => ".jl")
-    spec = language_name_to_definition_spec[language_name]
-    intermediate_rDSL_lang = translate_spec_to_type_system(spec)
-
-    println("LANGUAGE NAME: $(language_name)")
-    println("\nSTART STRING\n")
-    println(intermediate_rDSL_lang)
-
-    secondary_compressed_str = secondary_compression(intermediate_rDSL_lang, rules)
-    println("\nSECONDARY COMPRESSED STRING")
-    println(secondary_compressed_str)
-
-    expanded_lang_str = expand(lang_str)
-    println("\nEXPANDED STRING")
-    println(expanded_lang_str)
-
-    primary_compressed_str = primary_compression(expanded_lang_str, rules)
-    println("\nPRIMARY COMPRESSED STRING")
-    println(primary_compressed_str)
-
-    secondary_compressed_str = secondary_compression(primary_compressed_str, rules)
-    println("\nSECONDARY COMPRESSED STRING")
-    println(secondary_compressed_str)
-
-   language_name_to_type_system_via_spec[language_name] = (secondary_compressed_str, primary_compressed_str, expanded_lang_str) 
-end
-
-rules = []
-
-spec = language_name_to_definition_spec[language_names_pretty[1]]
-intermediate_rDSL_lang = translate_spec_to_type_system(spec)
-
-println("LANGUAGE NAME: $(language_name)")
-println("\nSTART STRING\n")
-println(intermediate_rDSL_lang)
-
-secondary_compressed_str = secondary_compression(intermediate_rDSL_lang, rules)
-println("\nSECONDARY COMPRESSED STRING")
-println(secondary_compressed_str)
-
-expanded_lang_str = expand(secondary_compressed_str)
-println("\nEXPANDED STRING")
-println(expanded_lang_str)
-
-primary_compressed_str = primary_compression(expanded_lang_str, rules)
-println("\nPRIMARY COMPRESSED STRING")
-println(primary_compressed_str)
-
-secondary_compressed_str = secondary_compression(primary_compressed_str, rules)
-println("\nSECONDARY COMPRESSED STRING")
-println(secondary_compressed_str)
+#    language_name_to_type_system_via_spec[language_name] = (secondary_compressed_str, primary_compressed_str, expanded_lang_str) 
+# end
 
 function generate_type_system(language_index, helpers_derivable=false; return_init=false)
     rules = language_index_to_knower_rules[language_index]
-    spec = language_name_to_definition_spec[language_names_pretty[language_index]]
+    language_name = language_names_pretty[language_index]
+    spec = language_name_to_definition_spec[language_name]
     intermediate_rDSL_lang = translate_spec_to_type_system(spec, helpers_derivable)
     
     println("LANGUAGE NAME: $(language_name)")
@@ -1041,18 +985,18 @@ function generate_all_type_systems(helpers_derivable=false; return_init=false)
     d
 end
 
-for helpers_derivable in [false, true]
-    d = generate_all_type_systems(helpers_derivable, return_init=true)
+# for helpers_derivable in [false, true]
+#     d = generate_all_type_systems(helpers_derivable, return_init=true)
 
-    for k in keys(d)
-        result = d[k] 
-        folder_names = readdir("language/macro_compression/auto_generated_variant/helpers_derivable")
-        for i in 1:length(folder_names)
-            folder_name = folder_names[i]
-            helper_derivable_folder = helpers_derivable ? "helpers_derivable" : "helpers_not_derivable" 
-            open("language/macro_compression/auto_generated_variant/$(helper_derivable_folder)/$(folder_name)/$(k)", "w+") do f 
-                write(f, result[i])
-            end
-        end
-    end
-end
+#     for k in keys(d)
+#         result = d[k] 
+#         folder_names = readdir("language/macro_compression/auto_generated_variant/helpers_derivable")
+#         for i in 1:length(folder_names)
+#             folder_name = folder_names[i]
+#             helper_derivable_folder = helpers_derivable ? "helpers_derivable" : "helpers_not_derivable" 
+#             open("language/macro_compression/auto_generated_variant/$(helper_derivable_folder)/$(folder_name)/$(k)", "w+") do f 
+#                 write(f, result[i])
+#             end
+#         end
+#     end
+# end

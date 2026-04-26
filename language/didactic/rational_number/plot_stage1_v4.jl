@@ -20,7 +20,7 @@ end
 
 function compute_computation_costs(base_computation_costs)
     # normalization components
-    all_task_vals = vcat(map(l -> map(t -> base_computation_costs[l][t], task_names), language_names_pretty)...)
+    all_task_vals = vcat(map(l -> map(t -> base_computation_costs[l][t], collect(keys(base_computation_costs[l]))), language_names_pretty)...)
     max_task_val = maximum(all_task_vals)
     min_task_val = minimum(all_task_vals)
 
@@ -30,7 +30,7 @@ function compute_computation_costs(base_computation_costs)
 
     average_language_costs = []
     for language_name in language_names_pretty 
-        task_vals = map(t -> base_computation_costs[language_name][t], task_names)
+        task_vals = map(t -> base_computation_costs[language_name][t], collect(keys(base_computation_costs[language_name])))
         # below: useful for plotting, but not strictly necessary
         normalized_task_vals = map(x -> normalize(x, max_task_val, min_task_val), task_vals)
         push!(average_language_costs, mean(normalized_task_vals))
@@ -42,11 +42,17 @@ function compute_computation_costs(base_computation_costs)
 end
 
 # UTILITY COMPONENT 1/2
-function compute_representation_cost(language; param_effects_memory_mod=0.0, compiler_based=false, infinite_scale=1.0)
+
+function compute_representation_costs(; param_effects_memory_mod=0.0, compiler_based=false, infinite_scale=1.0)
     if compiler_based 
         compute_memory_costs_compressed(infinite_scale=infinite_scale)
     else
-        compute_complexity_cost(language) * compute_compression_ratio(language, param_effects_memory_mod=param_effects_memory_mod)
+        costs = []
+        for language in language_names_pretty 
+            cost = compute_complexity_cost(language) * compute_compression_ratio(language, param_effects_memory_mod=param_effects_memory_mod)
+            push!(costs, cost)
+        end
+        costs
     end
 end
 
@@ -112,7 +118,6 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0; p
         end
     end
 
-
     if spec1["relate"] != "RN" && spec2["relate"] == "RN"
         if foldl(&, map(x -> spec1[x] == "RN", ["halve1", "halve2", "halve3", "double", "divide1", "divide2", "divide3", "multiply"]), init=true)
             dist += 20 - 19 * relate_factor
@@ -137,7 +142,7 @@ function distance_between_specs(spec1, spec2, relate_factor, spec2_taught=1.0; p
         else
             # hard to understand all the infinite divisibilities at once; space is the gateway
             if spec2["infinite_divisibility_number"] != "RN" && spec2["infinite_divisibility_weight"] != "RN"
-                dist -= structure_param * 1.5 # space only
+                dist -= structure_param * 1.75 # space only
             else
                 dist += missing_structure_param # space simultaneously with number, matter
             end
@@ -666,17 +671,14 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
     # accuracies[1] = 0.0
 
     # FINAL COSTS
-    global memory_costs = []
-    for language in language_names_pretty
-        cost = compute_representation_cost(language, param_effects_memory_mod=param_effects_memory_mod)
-        # cost = compute_representation_cost(language, param_effects_memory_mod=param_effects_memory_mod, compiler_based=true, infinite_scale=50.0)
-        push!(memory_costs, cost)
-    end
+    # global memory_costs = compute_representation_costs(param_effects_memory_mod=param_effects_memory_mod)
+    global memory_costs = compute_representation_costs(param_effects_memory_mod=param_effects_memory_mod, compiler_based=true, infinite_scale=50.0)
     memory_costs = memory_costs ./ (maximum(memory_costs) / 2)
 
     plot_colors = vcat(collect(palette(:tab10)), palette(:tab20)[12], palette(:tab20)[18], palette(:tab20)[20])
 
-    global computational_costs = map(x -> 0.5, 1:length(language_names))
+    # global computational_costs = map(x -> 0.5, 1:length(language_names))
+    global computational_costs = compute_computation_costs(base_computation_costs)
 
     accuracy_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:13]), accuracies[1:13], color = plot_colors, xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0), xtickfontsize=6)
 
@@ -693,7 +695,7 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
     max_yvals = 0.0
     min_yvals = 0.0
     for i in 1:length(language_names[1:13])
-        y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + computational_costs[i] - 0.50), x_vals)
+        y_vals = map(x -> gamma_c*x*accuracies[i] - cost_c *(memory_costs[i] + 0.1 * (computational_costs[i] - 0.50)), x_vals)
         max_yvals = maximum([max_yvals, maximum(y_vals)])
         min_yvals = minimum([min_yvals, minimum(y_vals)])
 

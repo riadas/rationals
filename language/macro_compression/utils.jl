@@ -1,60 +1,46 @@
-function size(x::Expr)
+function size(x::Expr, infinite_scale=1.0)
     s = 1
     for arg in x.args 
-        s += size(arg)
+        s += size(arg, infinite_scale)
     end
     s
 end
 
-function size(x::Symbol)
+function size(x::Symbol, infinite_scale=1.0)
+    x == :infinite ? infinite_scale : 1
+end
+
+function size(x::Union{Int, String, Bool, Nothing}, infinite_scale=1.0)
     1
 end
 
-function size(x::Union{Int, String, Bool, Nothing})
-    1
+function size(x::QuoteNode, infinite_scale=1.0)
+    size(x.value, infinite_scale)
 end
 
-function size(x::QuoteNode)
-    size(x.value)
-end
-
-function size(x::LineNumberNode)
+function size(x::LineNumberNode, infinite_scale=1.0)
     0
 end
 
-function compute_size(lang_str, dir_prefix="")
-    file_str = """global expr = quote 
+function compute_size(lang_str; infinite_scale=1.0)
+    expr_str = """quote 
         $(lang_str)    
     end
     """
 
-    open("language/macro_compression/size_computation_scratch.jl", "w+") do f 
-        write(f, file_str)
-    end
-
-    include("$(dir_prefix)size_computation_scratch.jl")
+    expr = eval(Meta.parse(expr_str))
     
-    size(expr)
+    size(expr, infinite_scale)
 end
 
-function compute_size_of_file(file_path)
+function compute_size_of_file(file_path; infinite_scale=1.0)
     global text = ""
     open(file_path, "r") do f 
         global text = read(f, String)
     end
 
-    compute_size(text)
+    compute_size(text, infinite_scale=infinite_scale)
 end
-
-directory = "language/macro_compression/auto_generated_variant/helpers_not_derivable/4_secondary_compressed/"
-filenames = language_names_pretty 
-
-sizes = []
-for filename in filenames
-    file_path = "$(directory)/$(filename)"
-    s = compute_size_of_file(file_path)
-    push!(sizes, s)
-end 
 
 function normalize(l)
     l = l .- minimum(l)
@@ -62,4 +48,21 @@ function normalize(l)
     l
 end
 
-normalized_sizes = normalize(sizes)
+function compute_memory_costs_compressed(; infinite_scale=1.0, helpers_derivable=false, normalized=true)
+    helpers_derivable_folder = helpers_derivable ? "helpers_derivable" : "helpers_not_derivable"
+    directory = "language/macro_compression/auto_generated_variant/$(helpers_derivable_folder)/4_secondary_compressed/"
+    filenames = language_names_pretty 
+
+    sizes = []
+    for filename in filenames
+        file_path = "$(directory)/$(filename)"
+        s = compute_size_of_file(file_path, infinite_scale=infinite_scale)
+        push!(sizes, s)
+    end 
+
+    if normalized 
+        normalize(sizes)
+    else
+        sizes
+    end
+end
