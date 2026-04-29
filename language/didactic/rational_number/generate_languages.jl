@@ -214,8 +214,17 @@ language14_definition_spec["infinite_divisibility_space"] = "infinite"
 language14_spec["infinite_divisibility_space"] = true
 
 # space, number, matter
-language15_definition_spec = deepcopy(base_language_definition_spec)
-language15_spec = deepcopy(base_language_spec)
+language15_definition_spec = deepcopy(language4_definition_spec)
+language15_spec = deepcopy(language4_spec)
+
+language15_definition_spec["infinite_divisibility_space"] = "infinite"
+language15_spec["infinite_divisibility_space"] = true
+
+language15_definition_spec["infinite_divisibility_number"] = "infinite"
+language15_spec["infinite_divisibility_number"] = true
+
+language15_definition_spec["infinite_divisibility_weight"] = "infinite"
+language15_spec["infinite_divisibility_weight"] = true
 
 # number
 language16_definition_spec = deepcopy(language4_definition_spec)

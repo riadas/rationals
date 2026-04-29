@@ -1,4 +1,4 @@
-model_file_name = "plot_stage1_v3.jl"
+model_file_name = "plot_stage1_v4.jl"
 include(model_file_name)
 curr_test_name = "good_curriculum"
 
@@ -14,19 +14,11 @@ function check_phase_order(phase_list, first_phase_prefixes, second_phase_prefix
     indices[1] < indices[2] ? 1.0 : 0.0
 end
 
-# distance_modifiers = [1.0]
-# for i in 1:10
-#     m = (distance_modifiers[end] + 0.12975) / 2
-#     push!(distance_modifiers, m) 
-# end
-# distance_modifiers
-
 distance_modifiers = [1.0]
-for i in 1:11
-    m = (distance_modifiers[end] + 0.1305) / 2
+for i in 1:9
+    m = (distance_modifiers[end] + 0.124) / 2
     push!(distance_modifiers, m) 
 end
-# distance_modifiers = distance_modifiers[end : end]
 
 arrs = []
 results = []
@@ -40,7 +32,7 @@ for distance_modifier_index in 1:length(distance_modifiers)
     utility_results = []
     MAP_results = []
 
-    modifiers = collect(-0.6:0.05:1.8) # collect(-0.59:0.01:0.59) # collect(-1.18:0.02:1.18)
+    modifiers = collect(-1.0:0.1:3.0) # collect(-0.59:0.01:0.59) # collect(-1.18:0.02:1.18)
     for modifier_index in 1:length(modifiers)
         @show modifier_index 
         modifier = modifiers[modifier_index]

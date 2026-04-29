@@ -48,15 +48,19 @@ function normalize(l)
     l
 end
 
-function compute_memory_costs_compressed(; infinite_scale=1.0, helpers_derivable=false, normalized=true)
+function compute_memory_costs_compressed(; infinite_scale=1.0, helpers_derivable=false, normalized=true, param_effects_memory_mod=0.0)
     helpers_derivable_folder = helpers_derivable ? "helpers_derivable" : "helpers_not_derivable"
     directory = "language/macro_compression/auto_generated_variant/$(helpers_derivable_folder)/4_secondary_compressed/"
     filenames = language_names_pretty 
 
     sizes = []
     for filename in filenames
+        spec = language_name_to_spec[filename]
         file_path = "$(directory)/$(filename)"
         s = compute_size_of_file(file_path, infinite_scale=infinite_scale)
+        if spec["relate"] == "RN"
+            s = s * (1.0 + param_effects_memory_mod)
+        end
         push!(sizes, s)
     end 
 
