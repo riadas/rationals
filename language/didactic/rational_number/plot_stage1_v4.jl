@@ -18,7 +18,7 @@ function compute_compression_ratio(language; param_effects_memory_mod=0.0)
     lang_spec["relate"] == "RN" ? (0.6 + param_effects_memory_mod) : 1.0
 end
 
-function compute_computation_costs(base_computation_costs)
+function compute_computation_costs(base_computation_costs, normalized=true)
     # normalization components
     all_task_vals = vcat(map(l -> map(t -> base_computation_costs[l][t], collect(keys(base_computation_costs[l]))), language_names_pretty)...)
     max_task_val = maximum(all_task_vals)
@@ -28,30 +28,7 @@ function compute_computation_costs(base_computation_costs)
         (x - min_task_val) / (max_task_val - min_task_val)
     end
 
-    average_language_costs = []
-    for language_name in language_names_pretty 
-        task_vals = map(t -> base_computation_costs[language_name][t], collect(keys(base_computation_costs[language_name])))
-        # below: useful for plotting, but not strictly necessary
-        normalized_task_vals = map(x -> normalize(x, max_task_val, min_task_val), task_vals)
-        push!(average_language_costs, mean(normalized_task_vals))
-    end
-    
-    average_language_costs = (average_language_costs .- minimum(average_language_costs)) ./ (maximum(average_language_costs) - minimum(average_language_costs))
-
-    average_language_costs
-end
-
-function compute_computation_costs_corrected(base_computation_costs, normalized=true)
-    # normalization components
-    all_task_vals = vcat(map(l -> map(t -> base_computation_costs[l][t], collect(keys(base_computation_costs[l]))), language_names_pretty)...)
-    max_task_val = maximum(all_task_vals)
-    min_task_val = minimum(all_task_vals)
-
-    function normalize(x, max_task_val, min_task_val)
-        (x - min_task_val) / (max_task_val - min_task_val)
-    end
-
-    new_base_computation_costs = Dict()
+    new_base_computation_costs = Dict(map(l -> l => Dict(), language_names_pretty))
     for language_name in language_names_pretty 
         for task_name in collect(keys(base_computation_costs[language_name])) 
             task_val = base_computation_costs[language_name][task_name]
@@ -61,7 +38,7 @@ function compute_computation_costs_corrected(base_computation_costs, normalized=
 
     average_language_costs = []
     for language_name in language_names_pretty 
-        cost = compute_computation_cost_efficient(lang_name, task_dict, new_base_computation_costs, normalized)
+        cost = compute_computation_cost_efficient(language_name, task_dict, new_base_computation_costs, normalized)
         push!(average_language_costs, cost)
     end
 
@@ -114,7 +91,7 @@ function compute_computation_cost_efficient(lang_name, task_dict, base_computati
     if normalized 
         score / total_tasks
     else
-        score / curr_test_name == "good_curriculum" ? 75.0 : 58.0
+        score / (curr_test_name == "good_curriculum" ? 75.0 : 58.0)
     end
 end
 
@@ -697,7 +674,8 @@ function run_test(test_name_, save_fig_title=""; param_effects_memory_mod=0.0, p
     )
 
     # global computational_costs = map(x -> 0.5, 1:length(language_names))
-    global computational_costs = compute_computation_costs(base_computation_costs)
+    # global computational_costs = compute_computation_costs(base_computation_costs)
+    global computational_costs = compute_computation_costs(base_computation_costs, normalized)
 
     accuracy_plot = bar(map(x -> replace(join(split(x, "_")[2:end], " "), " language.jl" => ""), language_names_pretty[1:20]), accuracies[1:20], color = plot_colors, xrotation=305, size=(800, 525), legend=false, xlabel="LoT Stage", ylabel="Accuracy", title="Task Accuracy", ylims=(0.0, 1.0), xtickfontsize=6)
 
